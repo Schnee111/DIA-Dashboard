@@ -142,11 +142,11 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <DashboardLayout role="admin">
+    <DashboardLayout role="staff">
       {/* Main content container with proper width management */}
       <div className="flex-1 w-full pr-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard Admin</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <Button onClick={exportToCSV}>
             <Download className="mr-2 h-4 w-4" />
             Ekspor Data

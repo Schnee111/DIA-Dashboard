@@ -1,5 +1,5 @@
 // lib/dataService.ts
-import { supabase } from '@/lib/supabaseclient'; // Sesuaikan path ke klien Supabase Anda
+import { supabase } from '@/lib/supabaseClient'; // Sesuaikan path ke klien Supabase Anda
 
 // Define TypeScript interfaces
 interface KerjasamaItem {
