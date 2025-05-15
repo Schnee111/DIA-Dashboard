@@ -88,7 +88,7 @@ export function Header({ role, username }: HeaderProps) {
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
                 <Badge
-                  className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center"
+                  className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-upi-red"
                   variant="destructive"
                 >
                   {unreadCount}
@@ -115,7 +115,9 @@ export function Header({ role, username }: HeaderProps) {
                   >
                     <div className="flex items-center justify-between">
                       <h5 className="font-medium">{notification.title}</h5>
-                      {!notification.read && <Badge variant="secondary" className="h-2 w-2 rounded-full p-0" />}
+                      {!notification.read && (
+                        <Badge variant="secondary" className="h-2 w-2 rounded-full p-0 bg-upi-red" />
+                      )}
                     </div>
                     <p className="text-sm text-gray-500">{notification.description}</p>
                     <p className="text-xs text-gray-400">{notification.time}</p>

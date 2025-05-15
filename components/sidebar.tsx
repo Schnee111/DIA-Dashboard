@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { BarChart3, FileText, Home, Users, Database, UserCog, LogOut, FileBarChart } from "lucide-react"
@@ -81,10 +82,10 @@ export function Sidebar({ role }: SidebarProps) {
   const routes = role === "admin" ? adminRoutes : role === "staff" ? staffRoutes : guestRoutes
 
   return (
-    <div className="group flex w-72 flex-col bg-white shadow-lg">
-      <div className="flex h-14 items-center border-b px-4">
-        <Link href={`/dashboard/${role}`} className="flex items-center gap-2 font-semibold">
-          <span className="text-lg">Sistem Manajemen DIA</span>
+    <div className="group flex w-72 flex-col bg-upi-red shadow-lg">
+      <div className="flex h-auto items-center border-b border-white/20 px-4 py-3">
+        <Link href={`/dashboard/${role}`} className="flex items-center gap-2 font-semibold text-white">
+          <Image src="/logo-upi.png" alt="UPI Logo" width={150} height={43} className="h-auto" />
         </Link>
       </div>
       <ScrollArea className="flex-1 overflow-auto py-2">
@@ -94,8 +95,8 @@ export function Sidebar({ role }: SidebarProps) {
               key={route.href}
               href={route.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900",
-                pathname === route.href && "bg-gray-100 text-gray-900",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-white transition-all hover:bg-white/10",
+                pathname === route.href && "bg-white/20 font-semibold",
               )}
             >
               <route.icon className="h-4 w-4" />
@@ -105,7 +106,11 @@ export function Sidebar({ role }: SidebarProps) {
         </nav>
       </ScrollArea>
       <div className="mt-auto p-4">
-        <Button variant="outline" className="w-full justify-start" asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-start text-white border-white hover:bg-white/10 hover:text-white"
+          asChild
+        >
           <Link href="/login">
             <LogOut className="mr-2 h-4 w-4" />
             Logout
