@@ -79,7 +79,7 @@ export async function fetchKerjasamaData(): Promise<KerjasamaItem[]> {
  */
 export async function fetchMitraData(): Promise<MitraItem[]> {
   const { data, error } = await supabase
-    .from('mitra')
+    .from('v_semua_mitra')
     .select('*');
   
   if (error) {

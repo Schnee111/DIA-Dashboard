@@ -10,7 +10,7 @@ import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { DistributionChart } from "@/components/country-distribution-chart"
-import { fetchDashboardData } from "@/lib/dataService";
+import { fetchDashboardData, fetchMitraData } from "@/lib/dataService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
@@ -123,8 +123,10 @@ export default function AdminDashboardPage() {
   // Kalkulasi untuk pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredKerjasama.slice(indexOfFirstItem, indexOfLastItem);
+  const kerjasamapagination = filteredKerjasama.slice(indexOfFirstItem, indexOfLastItem);
+  const mitrapagination = mitraData.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredKerjasama.length / itemsPerPage);
+  const mitratotalPages = Math.ceil(mitraData.length / itemsPerPage);
 
   // Reset halaman saat filter atau search berubah
   useEffect(() => {
@@ -240,13 +242,13 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="mt-6">
-          <Tabs defaultValue="mitra" className="w-full">
+          <Tabs defaultValue="kerjasama" className="w-full">
             <TabsList className="w-full md:w-auto">
-              <TabsTrigger value="mitra">Data Kerjasama</TabsTrigger>
-              <TabsTrigger value="pengguna">Data Pengguna</TabsTrigger>
+              <TabsTrigger value="kerjasama">Data Kerjasama</TabsTrigger>
+              <TabsTrigger value="mitra">Data Mitra</TabsTrigger>
               <TabsTrigger value="surat">Pengajuan Surat</TabsTrigger>
             </TabsList>
-            <TabsContent value="mitra" className="mt-4">
+            <TabsContent value="kerjasama" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Daftar Kerjasama</CardTitle>
@@ -295,8 +297,8 @@ export default function AdminDashboardPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {currentItems.length > 0 ? (
-                              currentItems.map((item) => (
+                            {kerjasamapagination.length > 0 ? (
+                              kerjasamapagination.map((item) => (
                                 <TableRow key={item.kerjasama_id}>
                                   <TableCell className="font-medium">{item.judul_kerjasama}</TableCell>
                                   <TableCell>{item.nama_mitra}</TableCell>
@@ -336,7 +338,7 @@ export default function AdminDashboardPage() {
                       
                       <div className="flex items-center justify-between space-x-2 py-4">
                         <div className="text-sm text-muted-foreground">
-                          Menampilkan {currentItems.length > 0 ? indexOfFirstItem + 1 : 0} - {Math.min(indexOfLastItem, filteredKerjasama.length)} dari {filteredKerjasama.length} data
+                          Menampilkan {kerjasamapagination.length > 0 ? indexOfFirstItem + 1 : 0} - {Math.min(indexOfLastItem, filteredKerjasama.length)} dari {filteredKerjasama.length} data
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
@@ -380,11 +382,13 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="pengguna" className="mt-4">
+
+
+            <TabsContent value="mitra" className="mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Daftar Pengguna</CardTitle>
-                  <CardDescription>Daftar semua pengguna yang terdaftar dalam sistem</CardDescription>
+                  <CardTitle>Daftar mitra</CardTitle>
+                  <CardDescription>Daftar semua Mitra yang terdaftar dalam sistem</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -392,58 +396,86 @@ export default function AdminDashboardPage() {
                       <p className="text-gray-500">Loading data...</p>
                     </div>
                   ) : (
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Nama</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Tanggal Daftar</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {/* {userData.length > 0 ? (
-                            userData.map((user) => (
-                              <TableRow key={user.id}>
-                                <TableCell className="font-medium">{user.name || user.username}</TableCell>
-                                <TableCell>{user.email}</TableCell>
-                                <TableCell>{user.role}</TableCell>
-                                <TableCell>
-                                  <span 
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      user.status === 'active' 
-                                        ? 'bg-green-100 text-green-800' 
-                                        : 'bg-gray-100 text-gray-800'
-                                    }`}
-                                  >
-                                    {user.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
-                                  </span>
+                    <>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Nama</TableHead>
+                              <TableHead>Negara</TableHead>
+                              <TableHead>Alamat</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {mitrapagination.length > 0 ? (
+                              mitrapagination.map((mitra) => (
+                                <TableRow key={mitra.id}>
+                                  <TableCell className="font-medium">{mitra.nama_mitra}</TableCell>
+                                  <TableCell>{mitra.nama_negara}</TableCell>
+                                  <TableCell>{mitra.alamat}</TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-4">
+                                  Tidak ada data mitra
                                 </TableCell>
-                                <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                               </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={5} className="text-center py-4">
-                                Tidak ada data pengguna
-                              </TableCell>
-                            </TableRow>
-                          )} */}
+                            )}
 
-                            <TableRow>
-                              <TableCell colSpan={5} className="text-center py-4">
-                                Tidak ada data pengguna
-                              </TableCell>
-                            </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
+                    
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      <div className="flex items-center justify-between space-x-2 py-4">
+                        <div className="text-sm text-muted-foreground">
+                          Menampilkan {mitrapagination.length > 0 ? indexOfFirstItem + 1 : 0} - {Math.min(indexOfLastItem, mitraData.length)} dari {mitraData.length} data
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Sebelumnya
+                          </Button>
+                          <div className="flex items-center">
+                            {Array.from({ length: mitratotalPages }, (_, i) => (
+                              <Button
+                                key={i + 1}
+                                variant={currentPage === i + 1 ? "default" : "outline"}
+                                size="sm"
+                                className="mx-1 w-8 h-8 p-0"
+                                onClick={() => setCurrentPage(i + 1)}
+                              >
+                                {i + 1}
+                              </Button>
+                            )).slice(
+                              Math.max(0, currentPage - 3),
+                              Math.min(mitratotalPages, currentPage + 2)
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === mitratotalPages || mitratotalPages === 0}
+                          >
+                            Berikutnya
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
+
+            
             <TabsContent value="surat" className="mt-4">
               <Card>
                 <CardHeader>
@@ -511,6 +543,48 @@ export default function AdminDashboardPage() {
                       </Table>
                     </div>
                   )}
+
+                  <div className="flex items-center justify-between space-x-2 py-4">
+                    <div className="text-sm text-muted-foreground">
+                      Menampilkan {kerjasamapagination.length > 0 ? indexOfFirstItem + 1 : 0} - {Math.min(indexOfLastItem, filteredKerjasama.length)} dari {filteredKerjasama.length} data
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Sebelumnya
+                      </Button>
+                      <div className="flex items-center">
+                        {Array.from({ length: totalPages }, (_, i) => (
+                          <Button
+                            key={i + 1}
+                            variant={currentPage === i + 1 ? "default" : "outline"}
+                            size="sm"
+                            className="mx-1 w-8 h-8 p-0"
+                            onClick={() => setCurrentPage(i + 1)}
+                          >
+                            {i + 1}
+                          </Button>
+                        )).slice(
+                          Math.max(0, currentPage - 3),
+                          Math.min(totalPages, currentPage + 2)
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages || totalPages === 0}
+                      >
+                        Berikutnya
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
