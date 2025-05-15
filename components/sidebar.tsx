@@ -105,7 +105,7 @@ export function Sidebar({ role }: SidebarProps) {
         collapsed ? "w-16" : "w-72",
       )}
     >
-      <div className="flex h-auto items-center justify-between border-b border-white/20 px-4 py-3 bg-white">
+      <div className="flex h-auto items-center justify-between border-b border-white/20 px-4 pt-3 pb-2 bg-white">
         {!collapsed ? (
           <div className="flex items-center justify-between w-full">
             <Link href={`/dashboard/${role}`} className="flex items-center gap-2 font-semibold">
@@ -121,7 +121,7 @@ export function Sidebar({ role }: SidebarProps) {
             </Button>
           </div>
         ) : (
-          <div className="flex items-center justify-center w-full">
+          <div className="flex items-center justify-center w-full pb-[0.67rem]">
             <Button
               variant="ghost"
               size="sm"
