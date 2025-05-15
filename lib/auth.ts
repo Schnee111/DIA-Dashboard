@@ -13,22 +13,13 @@ export async function authenticateUser(username: string, password: string) {
       .eq('username', username)
       .single()
 
-      console.log("user.password (hash in DB):", user.password)
-      console.log("Input password (plain):", password)
-      
     if (userError || !user) {
       console.error("Error finding user:", userError)
       return null
     }
-
-    // Debug: Log password verification attempt
-    console.log("Verifying password for user:", user.username)
     
     // Verifikasi password
     const passwordMatch = await bcrypt.compare(password, user.password)
-    
-    // Debug: Log hasil verifikasi password
-    console.log("Password match result:", passwordMatch)
     
     if (!passwordMatch) {
       console.error("Password does not match")
@@ -86,9 +77,6 @@ export async function authenticateUser(username: string, password: string) {
       `)
       .eq('role_id', roleData.id)
 
-    // Debug: Log hasil permissions
-    console.log("Role permissions:", rolePermissions, permissionsError ? `Error: ${permissionsError.message}` : "No error")
-
     if (permissionsError) {
       console.error("Error fetching role permissions:", permissionsError)
       return null
@@ -97,19 +85,6 @@ export async function authenticateUser(username: string, password: string) {
     // Extract permission names, with null check
     const permissionList = rolePermissions?.map(rp => rp.permission?.name).filter(Boolean) || []
 
-    // User berhasil login
-    console.log("Authentication successful for user:", user.username)
-
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      username: user.username,
-      role: roleData.name,
-      permissions: permissionList,
-      profilePicture: user.profile_picture,
-      isActive: user.is_active !== false
-    }
   } catch (error) {
     console.error("Unexpected error during authentication:", error)
     return null
