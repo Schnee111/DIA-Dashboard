@@ -56,7 +56,10 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         // UPI colors
         upi: {
-          red: "#E30613",
+          red: {
+            DEFAULT: "#E30613",
+            dark: "#a82021",
+          },
           black: "#000000",
           yellow: "#FFC107",
           white: "#FFFFFF",

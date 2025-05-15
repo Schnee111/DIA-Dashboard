@@ -20,7 +20,7 @@ body {
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 91% 45%; /* UPI Red */
+    --primary: 0 91% 45%; /* UPI Red #E30613 */
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
@@ -39,7 +39,7 @@ body {
     --chart-4: 0 0% 100%; /* White */
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 0 91% 45%; /* UPI Red */
+    --sidebar-background: 0 91% 45%; /* UPI Red #E30613 */
     --sidebar-foreground: 0 0% 100%; /* White */
     --sidebar-primary: 0 0% 100%; /* White */
     --sidebar-primary-foreground: 0 91% 45%; /* UPI Red */
@@ -49,36 +49,36 @@ body {
     --sidebar-ring: 0 0% 100%; /* White */
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 91% 45%; /* UPI Red */
+    --background: 220 10% 17%; /* Grey-ish dark background */
+    --foreground: 220 10% 98%;
+    --card: 220 10% 20%; /* Grey-ish card background */
+    --card-foreground: 220 10% 98%;
+    --popover: 220 10% 20%; /* Grey-ish popover background */
+    --popover-foreground: 220 10% 98%;
+    --primary: 0 75% 39%; /* UPI Red #a82021 for dark mode */
     --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 91% 45%; /* UPI Red */
+    --secondary: 220 10% 24%; /* Grey-ish secondary */
+    --secondary-foreground: 220 10% 98%;
+    --muted: 220 10% 24%; /* Grey-ish muted */
+    --muted-foreground: 220 10% 75%; /* More visible muted text */
+    --accent: 0 75% 39%; /* UPI Red #a82021 for dark mode */
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 40%; /* Brighter destructive */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 91% 45%; /* UPI Red */
-    --chart-1: 0 91% 45%; /* UPI Red */
+    --border: 220 10% 25%; /* Grey-ish borders */
+    --input: 220 10% 25%; /* Grey-ish inputs */
+    --ring: 0 75% 39%; /* UPI Red #a82021 for dark mode */
+    --chart-1: 0 75% 39%; /* UPI Red #a82021 for dark mode */
     --chart-2: 0 0% 100%; /* White */
     --chart-3: 45 100% 51%; /* Yellow */
-    --chart-4: 0 0% 0%; /* Black */
+    --chart-4: 220 10% 20%; /* Grey-ish */
     --chart-5: 340 75% 55%;
-    --sidebar-background: 0 91% 45%; /* UPI Red */
+    --sidebar-background: 0 75% 39%; /* UPI Red #a82021 for dark mode */
     --sidebar-foreground: 0 0% 100%; /* White */
     --sidebar-primary: 0 0% 100%; /* White */
-    --sidebar-primary-foreground: 0 91% 45%; /* UPI Red */
-    --sidebar-accent: 0 0% 20%; /* Dark gray */
-    --sidebar-accent-foreground: 0 0% 100%; /* White */
+    --sidebar-primary-foreground: 0 75% 39%; /* UPI Red #a82021 for dark mode */
+    --sidebar-accent: 220 10% 30%; /* Grey-ish sidebar accent */
+    --sidebar-accent-foreground: 0 75% 39%; /* UPI Red #a82021 for dark mode */
     --sidebar-border: 0 0% 100%; /* White */
     --sidebar-ring: 0 0% 100%; /* White */
   }

@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, Search, User, LogOut } from "lucide-react"
+import { Bell, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,17 +73,14 @@ export function Header({ role, username }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 sm:px-6">
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
       <div className="flex flex-1 items-center gap-2">
-        <form className="relative w-full max-w-[600px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input type="search" placeholder="Cari..." className="w-full bg-white pl-8 md:w-[300px] lg:w-[400px]" />
-        </form>
+        <h2 className="text-lg font-semibold">Sistem Manajemen Kerjasama DIA UPI</h2>
       </div>
       <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="relative">
+            <Button variant="outline" size="icon" className="relative rounded-full">
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
                 <Badge
@@ -110,7 +106,7 @@ export function Header({ role, username }: HeaderProps) {
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`flex cursor-pointer flex-col gap-1 border-b p-3 ${notification.read ? "" : "bg-gray-50"}`}
+                    className={`flex cursor-pointer flex-col gap-1 border-b p-3 ${notification.read ? "" : "bg-muted/50"}`}
                     onClick={() => markAsRead(notification.id)}
                   >
                     <div className="flex items-center justify-between">
@@ -119,12 +115,12 @@ export function Header({ role, username }: HeaderProps) {
                         <Badge variant="secondary" className="h-2 w-2 rounded-full p-0 bg-upi-red" />
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{notification.description}</p>
-                    <p className="text-xs text-gray-400">{notification.time}</p>
+                    <p className="text-sm text-muted-foreground">{notification.description}</p>
+                    <p className="text-xs text-muted-foreground">{notification.time}</p>
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-sm text-gray-500">Tidak ada notifikasi</div>
+                <div className="p-4 text-center text-sm text-muted-foreground">Tidak ada notifikasi</div>
               )}
             </div>
           </PopoverContent>
@@ -132,7 +128,7 @@ export function Header({ role, username }: HeaderProps) {
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" className="rounded-full">
               <User className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -140,7 +136,7 @@ export function Header({ role, username }: HeaderProps) {
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span>{username}</span>
-                <span className="text-xs text-gray-500 capitalize">{role}</span>
+                <span className="text-xs text-muted-foreground capitalize">{role}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
