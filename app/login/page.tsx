@@ -143,16 +143,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
-            <Image
-              src="/placeholder.svg?height=80&width=80"
-              alt="Logo"
-              width={80}
-              height={80}
-              className="rounded-full"
-            />
+            <Image src="/logo-upi.png" alt="UPI Logo" width={200} height={57} className="h-auto" />
           </div>
-          <CardTitle className="text-2xl text-center">Sistem Manajemen Pengguna</CardTitle>
-          <CardDescription className="text-center">Masuk atau daftar untuk mengakses sistem</CardDescription>
+          <CardTitle className="text-2xl text-center">Sistem Manajemen Kerjasama</CardTitle>
+          <CardDescription className="text-center">Direktorat Urusan Internasional</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login">
@@ -194,7 +188,7 @@ export default function LoginPage() {
                       required
                     />
                   </div>
-                  <Button className="w-full" type="submit" disabled={loginLoading}>
+                  <Button className="w-full bg-upi-red hover:bg-upi-red/90" type="submit" disabled={loginLoading}>
                     {loginLoading ? "Memproses..." : "Login"}
                   </Button>
                 </div>
@@ -265,7 +259,7 @@ export default function LoginPage() {
                       required
                     />
                   </div>
-                  <Button className="w-full" type="submit" disabled={registerLoading}>
+                  <Button className="w-full bg-upi-red hover:bg-upi-red/90" type="submit" disabled={registerLoading}>
                     {registerLoading ? "Memproses..." : "Daftar"}
                   </Button>
                 </div>
@@ -274,7 +268,7 @@ export default function LoginPage() {
           </Tabs>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} Sistem Manajemen Pengguna</p>
+          <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} Direktorat Urusan Internasional UPI</p>
         </CardFooter>
       </Card>
     </div>
