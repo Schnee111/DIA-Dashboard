@@ -22,20 +22,17 @@ interface MitraItem {
 
 interface UserItem {
   id?: string;
-  email?: string;
+  username?: string;
   [key: string]: any;
 }
+
+interface rolesItem {
+    id?: string;
+    [key: string]: any;
+  }
 
 interface SuratItem {
   id?: number;
-  [key: string]: any;
-}
-
-interface ActivityItem {
-  id?: number;
-  deskripsi?: string;
-  user_id?: string;
-  created_at?: string;
   [key: string]: any;
 }
 
@@ -55,6 +52,45 @@ interface DashboardData {
   negaraStats: ChartDataItem[];
   jenisStats: ChartDataItem[];
 }
+
+export async function roles(): Promise<rolesItem[]> {
+    const { data, error } = await supabase
+      .from('roles')
+      .select('*');
+    
+    if (error) {
+      console.error("Error fetching roles:", error);
+      throw error;
+    }
+    
+    return data || [];
+  }
+
+  export async function users(): Promise<UserItem[]> {
+    const { data, error } = await supabase
+      .from('users') // Corrected: Changed from 'user' to 'users'
+      .select('*');
+    
+    if (error) {
+      console.error("Error fetching users:", error);
+      throw error;
+    }
+    
+    return data || [];
+  }
+
+  export async function userRoles(): Promise<KerjasamaItem[]> {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('*');
+    
+    if (error) {
+      console.error("Error fetching user_roles:", error);
+      throw error;
+    }
+    
+    return data || [];
+  }
 
 /**
  * Fetch kerjasama data from Supabase
