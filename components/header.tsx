@@ -74,7 +74,7 @@ export function Header({ role, username }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-white px-4 sm:px-6">
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 sm:px-6">
       <div className="flex flex-1 items-center gap-2">
         <form className="relative w-full max-w-[600px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
