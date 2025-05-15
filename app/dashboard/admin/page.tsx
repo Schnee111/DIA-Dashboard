@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <DashboardLayout role="staff">
+    <DashboardLayout role="admin">
       {/* Main content container with proper width management */}
       <div className="flex-1 w-full pr-6">
         <div className="flex items-center justify-between mb-6">
