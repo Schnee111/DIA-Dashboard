@@ -83,8 +83,8 @@ export function Sidebar({ role }: SidebarProps) {
 
   return (
     <div className="group flex w-72 flex-col bg-upi-red shadow-lg">
-      <div className="flex h-auto items-center border-b border-white/20 px-4 py-3">
-        <Link href={`/dashboard/${role}`} className="flex items-center gap-2 font-semibold text-white">
+      <div className="flex h-auto items-center border-b border-white/20 px-4 py-3 bg-white">
+        <Link href={`/dashboard/${role}`} className="flex items-center gap-2 font-semibold">
           <Image src="/logo-upi.png" alt="UPI Logo" width={150} height={43} className="h-auto" />
         </Link>
       </div>
@@ -107,8 +107,8 @@ export function Sidebar({ role }: SidebarProps) {
       </ScrollArea>
       <div className="mt-auto p-4">
         <Button
-          variant="outline"
-          className="w-full justify-start text-white border-white hover:bg-white/10 hover:text-white"
+          variant="default"
+          className="w-full justify-start bg-white text-upi-red hover:bg-white/90 hover:text-upi-red"
           asChild
         >
           <Link href="/login">
