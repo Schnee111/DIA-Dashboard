@@ -1,61 +1,36 @@
-create view public.v_kerjasama_akan_berakhir as
+create view public.v_semua_kerjasama as
 select
   k.kerjasama_id,
-  k.judul_kerjasama,
-  m.nama_mitra,
-  n.nama_negara,
-  k.tanggal_berakhir,
-  k.tanggal_berakhir - CURRENT_DATE as sisa_hari
-from
-  kerjasama k
-  join mitra m on k.mitra_id = m.mitra_id
-  join negara n on m.negara_id = n.negara_id
-where
-  k.status::text = 'Aktif'::text
-  and k.tanggal_berakhir >= CURRENT_DATE
-  and k.tanggal_berakhir <= (CURRENT_DATE + '6 mons'::interval)
-order by
-  k.tanggal_berakhir;
-
-
-
-create view public.v_kerjasama_aktif as
-select
-  k.kerjasama_id,
-  k.judul_kerjasama,
-  m.nama_mitra,
-  n.nama_negara,
-  j.nama_jenis as jenis_dokumen,
+  k.no_dokumen,
   k.bidang_kerjasama,
+  k.judul_kerjasama,
   k.tanggal_mulai,
   k.tanggal_berakhir,
   k.status,
-  k.pelaksana
+  k.catatan,
+  k.jumlah_pihak,
+  k.output_kerjasama,
+  k.tgl_input,
+  k.tgl_lapor,
+  k.status_lapor,
+  k.tahun,
+  k.pelaksana,
+  m.nama_mitra,
+  n.nama_negara,
+  j.nama_jenis as jenis_dokumen,
+  pj_upi.nama as nama_pj_upi,
+  pj_mitra.nama as nama_pj_mitra,
+  penandatangan_upi.nama as nama_penandatangan_upi,
+  penandatangan_mitra.nama as nama_penandatangan_mitra
 from
   kerjasama k
   join mitra m on k.mitra_id = m.mitra_id
   join negara n on m.negara_id = n.negara_id
   join jenis_dokumen j on k.jenis_dok_id = j.jenis_dok_id
-where
-  k.status::text = 'Aktif'::text;
-
-create view public.v_semua_kerjasama as
-select
-  k.kerjasama_id,
-  k.judul_kerjasama,
-  m.nama_mitra,
-  n.nama_negara,
-  j.nama_jenis as jenis_dokumen,
-  k.bidang_kerjasama,
-  k.tanggal_mulai,
-  k.tanggal_berakhir,
-  k.status,
-  k.pelaksana
-from
-  kerjasama k
-  join mitra m on k.mitra_id = m.mitra_id
-  join negara n on m.negara_id = n.negara_id
-  join jenis_dokumen j on k.jenis_dok_id = j.jenis_dok_id;
+  left join personel pj_upi on k.pj_upi = pj_upi.personel_id
+  left join personel pj_mitra on k.pj_mitra = pj_mitra.personel_id
+  left join personel penandatangan_upi on k.penandatangan_upi = penandatangan_upi.personel_id
+  left join personel penandatangan_mitra on k.penandatangan_mitra = penandatangan_mitra.personel_id;
 
 create view public.v_semua_mitra as
 select
@@ -68,6 +43,25 @@ from
   mitra m
   join negara n on m.negara_id = n.negara_id
   join jenis_partner jp on m.jenis_partner_id = jp.jenis_partner_id;
+
+
+create table public.personel (
+  personel_id serial not null,
+  nama character varying(255) not null,
+  email character varying(100) null,
+  kontak character varying(50) null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  jabatan_id integer null,
+  pihak public.pihak not null,
+  constraint personel_pkey primary key (personel_id),
+  constraint personel_jabatan_id_fkey foreign KEY (jabatan_id) references jabatan (jabatan_id)
+) TABLESPACE pg_default;
+
+create trigger update_personel_modtime BEFORE
+update on personel for EACH row
+execute FUNCTION update_modified_column ();
+
 
 create view public.v_statistik_negara as
 select
