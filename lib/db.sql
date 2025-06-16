@@ -18,6 +18,7 @@ order by
   k.tanggal_berakhir;
 
 
+
 create view public.v_kerjasama_aktif as
 select
   k.kerjasama_id,
