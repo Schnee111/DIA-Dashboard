@@ -53,7 +53,6 @@ create table public.personel (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   jabatan_id integer null,
-  pihak public.pihak not null,
   constraint personel_pkey primary key (personel_id),
   constraint personel_jabatan_id_fkey foreign KEY (jabatan_id) references jabatan (jabatan_id)
 ) TABLESPACE pg_default;

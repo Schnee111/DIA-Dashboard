@@ -35,10 +35,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
+import { SearchableSelect } from "@/components/searchable-select"
+import { QuickAddInput } from "@/components/quick-add-input"
 import {
   fetchKerjasamaData,
   fetchMitraData,
-  fetchUsers,
+  fetchPersonel,
+  fetchJabatan,
   fetchNegara,
   fetchJenisPartner,
   fetchJenisDokumen,
@@ -48,9 +51,12 @@ import {
   createKerjasama,
   updateKerjasama,
   deleteKerjasama,
-  createUser,
-  updateUser,
-  deleteUser,
+  createPersonel,
+  updatePersonel,
+  deletePersonel,
+  createJabatan,
+  createNegara,
+  createJenisDokumen,
   extractYearsFromDates,
   isCooperationPeriodInYearRange,
   isSingleDateInYearRange,
@@ -70,27 +76,52 @@ interface MitraData {
 
 interface KerjasamaData {
   kerjasama_id: number
-  judul_kerjasama: string
-  nama_mitra: string
-  nama_negara: string
-  jenis_dokumen: string
+  no_dokumen?: string
   bidang_kerjasama?: string
+  judul_kerjasama: string
   tanggal_mulai: string
   tanggal_berakhir: string
   status: string
+  catatan?: string
+  jumlah_pihak?: number
+  output_kerjasama?: string
+  tgl_input?: string
+  tgl_lapor?: string
+  status_lapor?: string
+  tahun?: number
   pelaksana?: string
+  nama_mitra: string
+  nama_negara: string
+  jenis_dokumen: string
+  nama_pj_upi?: string
+  nama_pj_mitra?: string
+  nama_penandatangan_upi?: string
+  nama_penandatangan_mitra?: string
+  // Foreign key IDs for form handling
   mitra_id?: number
   jenis_dok_id?: number
+  pj_upi?: number
+  pj_mitra?: number
+  penandatangan_upi?: number
+  penandatangan_mitra?: number
 }
 
-interface UserData {
-  id: string
-  name: string
-  email: string
-  username: string
-  password?: string
-  profile_picture?: string
-  is_active: boolean
+interface PersonelData {
+  personel_id: number
+  nama: string
+  email?: string
+  kontak?: string
+  jabatan_id?: number
+  pihak: "UPI" | "MITRA"
+  nama_jabatan?: string
+  created_at: string
+  updated_at: string
+}
+
+interface JabatanData {
+  jabatan_id: number
+  nama_jabatan: string
+  pihak: "UPI" | "MITRA"
   created_at: string
   updated_at: string
 }
@@ -117,6 +148,7 @@ export default function DataCentralPage() {
   const [filterJenisPartner, setFilterJenisPartner] = useState("all")
   const [filterNegara, setFilterNegara] = useState("all")
   const [filterJenisDokumen, setFilterJenisDokumen] = useState("all")
+  const [filterPihak, setFilterPihak] = useState("all")
 
   // Year range filters
   const [filterYearFrom, setFilterYearFrom] = useState("all")
@@ -125,7 +157,8 @@ export default function DataCentralPage() {
   // Data states
   const [mitraData, setMitraData] = useState<MitraData[]>([])
   const [kerjasamaData, setKerjasamaData] = useState<KerjasamaData[]>([])
-  const [userData, setUserData] = useState<UserData[]>([])
+  const [personelData, setPersonelData] = useState<PersonelData[]>([])
+  const [jabatanData, setJabatanData] = useState<JabatanData[]>([])
   const [negaraData, setNegaraData] = useState<NegaraData[]>([])
   const [jenisPartnerData, setJenisPartnerData] = useState<JenisPartnerData[]>([])
   const [jenisDokumenData, setJenisDokumenData] = useState<JenisDokumenData[]>([])
@@ -145,12 +178,17 @@ export default function DataCentralPage() {
   const [isViewKerjasamaOpen, setIsViewKerjasamaOpen] = useState(false)
   const [selectedKerjasama, setSelectedKerjasama] = useState<KerjasamaData | null>(null)
 
-  // Dialog states for User
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false)
-  const [isEditUserOpen, setIsEditUserOpen] = useState(false)
-  const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false)
-  const [isViewUserOpen, setIsViewUserOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
+  // Dialog states for Personel
+  const [isAddPersonelOpen, setIsAddPersonelOpen] = useState(false)
+  const [isEditPersonelOpen, setIsEditPersonelOpen] = useState(false)
+  const [isDeletePersonelOpen, setIsDeletePersonelOpen] = useState(false)
+  const [isViewPersonelOpen, setIsViewPersonelOpen] = useState(false)
+  const [selectedPersonel, setSelectedPersonel] = useState<PersonelData | null>(null)
+
+  // Modal states for adding new related data from cooperation form
+  const [isAddMitraModalOpen, setIsAddMitraModalOpen] = useState(false)
+  const [isAddPersonelModalOpen, setIsAddPersonelModalOpen] = useState(false)
+  const [isAddJabatanModalOpen, setIsAddJabatanModalOpen] = useState(false)
 
   // Form states
   const [newMitra, setNewMitra] = useState<Partial<MitraData>>({
@@ -161,23 +199,39 @@ export default function DataCentralPage() {
   })
 
   const [newKerjasama, setNewKerjasama] = useState<Partial<KerjasamaData>>({
-    judul_kerjasama: "",
-    mitra_id: undefined,
-    jenis_dok_id: undefined,
+    no_dokumen: "",
     bidang_kerjasama: "",
+    judul_kerjasama: "",
     tanggal_mulai: "",
     tanggal_berakhir: "",
     status: "Aktif",
+    catatan: "",
+    jumlah_pihak: 2,
+    output_kerjasama: "",
+    tgl_input: new Date().toISOString().split("T")[0],
+    tgl_lapor: "",
+    status_lapor: "Belum Lapor",
+    tahun: new Date().getFullYear(),
     pelaksana: "",
+    mitra_id: undefined,
+    jenis_dok_id: undefined,
+    pj_upi: undefined,
+    pj_mitra: undefined,
+    penandatangan_upi: undefined,
+    penandatangan_mitra: undefined,
   })
 
-  const [newUser, setNewUser] = useState<Partial<UserData>>({
-    name: "",
+  const [newPersonel, setNewPersonel] = useState<Partial<PersonelData>>({
+    nama: "",
     email: "",
-    username: "",
-    password: "",
-    is_active: true,
-    profile_picture: "",
+    kontak: "",
+    jabatan_id: undefined,
+    pihak: "UPI",
+  })
+
+  const [newJabatan, setNewJabatan] = useState<Partial<JabatanData>>({
+    nama_jabatan: "",
+    pihak: "UPI",
   })
 
   // Pagination
@@ -198,14 +252,16 @@ export default function DataCentralPage() {
         const [
           mitraResponse,
           kerjasamaResponse,
-          userResponse,
+          personelResponse,
+          jabatanResponse,
           negaraResponse,
           jenisPartnerResponse,
           jenisDokumenResponse,
         ] = await Promise.all([
           fetchMitraData(),
           fetchKerjasamaData(),
-          fetchUsers(),
+          fetchPersonel(),
+          fetchJabatan(),
           fetchNegara(),
           fetchJenisPartner(),
           fetchJenisDokumen(),
@@ -213,7 +269,8 @@ export default function DataCentralPage() {
 
         setMitraData(mitraResponse as MitraData[])
         setKerjasamaData(kerjasamaResponse as KerjasamaData[])
-        setUserData(userResponse as UserData[])
+        setPersonelData(personelResponse as PersonelData[])
+        setJabatanData(jabatanResponse)
         setNegaraData(negaraResponse)
         setJenisPartnerData(jenisPartnerResponse)
         setJenisDokumenData(jenisDokumenResponse)
@@ -234,7 +291,7 @@ export default function DataCentralPage() {
         const allDates = [
           ...kerjasamaResponse.map((item) => item.tanggal_mulai).filter(Boolean),
           ...kerjasamaResponse.map((item) => item.tanggal_berakhir).filter(Boolean),
-          ...userResponse.map((item) => item.created_at).filter(Boolean),
+          ...personelResponse.map((item) => item.created_at).filter(Boolean),
         ]
 
         const years = extractYearsFromDates(allDates)
@@ -254,7 +311,83 @@ export default function DataCentralPage() {
     loadData()
   }, [toast])
 
-  // Filter mitra data
+  // Helper functions to create options for SearchableSelect
+  const getMitraOptions = () =>
+    mitraData.map((mitra) => ({
+      value: mitra.mitra_id,
+      label: `${mitra.nama_mitra} (${mitra.nama_negara})`,
+    }))
+
+  const getPersonelOptions = (pihak?: "UPI" | "MITRA") =>
+    personelData
+      .filter((personel) => !pihak || personel.pihak === pihak)
+      .map((personel) => ({
+        value: personel.personel_id,
+        label: `${personel.nama} ${personel.nama_jabatan ? `- ${personel.nama_jabatan}` : ""} (${personel.pihak})`,
+      }))
+
+  const getJabatanOptions = (pihak?: "UPI" | "MITRA") =>
+    jabatanData
+      .filter((jabatan) => !pihak || jabatan.pihak === pihak)
+      .map((jabatan) => ({
+        value: jabatan.jabatan_id,
+        label: `${jabatan.nama_jabatan} (${jabatan.pihak})`,
+      }))
+
+  const getNegaraOptions = () =>
+    negaraData.map((negara) => ({
+      value: negara.negara_id,
+      label: negara.nama_negara,
+    }))
+
+  const getJenisDokumenOptions = () =>
+    jenisDokumenData.map((jenis) => ({
+      value: jenis.jenis_dok_id,
+      label: jenis.nama_jenis,
+    }))
+
+  const getJenisPartnerOptions = () =>
+    jenisPartnerData.map((jenis) => ({
+      value: jenis.jenis_partner_id,
+      label: jenis.nama_jenis,
+    }))
+
+  // Quick add handlers
+  const handleQuickAddNegara = async (namaNegaraData: string) => {
+    try {
+      const newNegaraItem = await createNegara(namaNegaraData)
+      setNegaraData((prev) => [...prev, newNegaraItem])
+      toast({
+        title: "Berhasil",
+        description: "Negara berhasil ditambahkan",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan negara",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleQuickAddJenisDokumen = async (namaJenisData: string) => {
+    try {
+      const newJenisItem = await createJenisDokumen(namaJenisData)
+      setJenisDokumenData((prev) => [...prev, newJenisItem])
+      toast({
+        title: "Berhasil",
+        description: "Jenis dokumen berhasil ditambahkan",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan jenis dokumen",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Filter functions
   const filteredMitra = mitraData.filter((item) => {
     const matchesSearch =
       (item.nama_mitra?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
@@ -266,13 +399,13 @@ export default function DataCentralPage() {
     return matchesSearch && matchesJenisPartner && matchesNegara
   })
 
-  // Filter kerjasama data
   const filteredKerjasama = kerjasamaData.filter((item) => {
     const matchesSearch =
       (item.judul_kerjasama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (item.nama_mitra?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (item.bidang_kerjasama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.pelaksana?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (item.pelaksana?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (item.no_dokumen?.toLowerCase() || "").includes(searchTerm.toLowerCase())
 
     const matchesStatus = filterStatus === "all" || item.status === filterStatus
     const matchesNegara = filterNegara === "all" || item.nama_negara === filterNegara
@@ -287,16 +420,17 @@ export default function DataCentralPage() {
     return matchesSearch && matchesStatus && matchesNegara && matchesJenisDokumen && matchesYearRange
   })
 
-  // Filter user data
-  const filteredUsers = userData.filter((item) => {
+  const filteredPersonel = personelData.filter((item) => {
     const matchesSearch =
-      (item.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (item.nama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (item.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.username?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (item.kontak?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (item.nama_jabatan?.toLowerCase() || "").includes(searchTerm.toLowerCase())
 
+    const matchesPihak = filterPihak === "all" || item.pihak === filterPihak
     const matchesYearRange = isSingleDateInYearRange(item.created_at, filterYearFrom, filterYearTo)
 
-    return matchesSearch && matchesYearRange
+    return matchesSearch && matchesPihak && matchesYearRange
   })
 
   // Pagination calculations
@@ -304,40 +438,65 @@ export default function DataCentralPage() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentMitra = filteredMitra.slice(indexOfFirstItem, indexOfLastItem)
   const currentKerjasama = filteredKerjasama.slice(indexOfFirstItem, indexOfLastItem)
-  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem)
+  const currentPersonel = filteredPersonel.slice(indexOfFirstItem, indexOfLastItem)
 
   const totalMitraPages = Math.ceil(filteredMitra.length / itemsPerPage)
   const totalKerjasamaPages = Math.ceil(filteredKerjasama.length / itemsPerPage)
-  const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage)
+  const totalPersonelPages = Math.ceil(filteredPersonel.length / itemsPerPage)
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, filterStatus, filterJenisPartner, filterNegara, filterJenisDokumen, filterYearFrom, filterYearTo])
+  }, [
+    searchTerm,
+    filterStatus,
+    filterJenisPartner,
+    filterNegara,
+    filterJenisDokumen,
+    filterPihak,
+    filterYearFrom,
+    filterYearTo,
+  ])
 
   // Handle form input changes
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-    formType: "mitra" | "kerjasama" | "user",
+    formType: "mitra" | "kerjasama" | "personel" | "jabatan",
   ) => {
     const { name, value } = e.target
     if (formType === "mitra") {
       setNewMitra((prev) => ({ ...prev, [name]: value }))
     } else if (formType === "kerjasama") {
       setNewKerjasama((prev) => ({ ...prev, [name]: value }))
-    } else if (formType === "user") {
-      setNewUser((prev) => ({ ...prev, [name]: value }))
+    } else if (formType === "personel") {
+      setNewPersonel((prev) => ({ ...prev, [name]: value }))
+    } else if (formType === "jabatan") {
+      setNewJabatan((prev) => ({ ...prev, [name]: value }))
     }
   }
 
   // Handle select changes
-  const handleSelectChange = (name: string, value: string, formType: "mitra" | "kerjasama" | "user") => {
+  const handleSelectChange = (
+    name: string,
+    value: string,
+    formType: "mitra" | "kerjasama" | "personel" | "jabatan",
+  ) => {
     if (formType === "mitra") {
       setNewMitra((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
     } else if (formType === "kerjasama") {
-      setNewKerjasama((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
-    } else if (formType === "user") {
-      setNewUser((prev) => ({ ...prev, [name]: value === "true" ? true : value === "false" ? false : value }))
+      if (name === "jumlah_pihak" || name === "tahun") {
+        setNewKerjasama((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
+      } else {
+        setNewKerjasama((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
+      }
+    } else if (formType === "personel") {
+      if (name === "jabatan_id") {
+        setNewPersonel((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
+      } else {
+        setNewPersonel((prev) => ({ ...prev, [name]: value }))
+      }
+    } else if (formType === "jabatan") {
+      setNewJabatan((prev) => ({ ...prev, [name]: value }))
     }
   }
 
@@ -479,66 +638,135 @@ export default function DataCentralPage() {
     }
   }
 
-  // CRUD Operations for User
-  const handleAddUser = async () => {
+  // CRUD Operations for Personel
+  const handleAddPersonel = async () => {
     try {
-      const createdUser = await createUser(newUser)
-      setUserData((prev) => [...prev, createdUser as UserData])
-      setIsAddUserOpen(false)
-      resetUserForm()
+      const createdPersonel = await createPersonel(newPersonel)
+      // Reload data to get updated view
+      const personelResponse = await fetchPersonel()
+      setPersonelData(personelResponse as PersonelData[])
+      setIsAddPersonelOpen(false)
+      resetPersonelForm()
 
       toast({
         title: "Berhasil",
-        description: "Pengguna berhasil ditambahkan",
+        description: "Personel berhasil ditambahkan",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Gagal menambahkan pengguna",
+        description: "Gagal menambahkan personel",
         variant: "destructive",
       })
     }
   }
 
-  const handleEditUser = async () => {
-    if (!selectedUser) return
+  const handleEditPersonel = async () => {
+    if (!selectedPersonel) return
 
     try {
-      await updateUser(selectedUser.id, newUser)
-      setUserData((prev) => prev.map((item) => (item.id === selectedUser.id ? { ...item, ...newUser } : item)))
-      setIsEditUserOpen(false)
-      setSelectedUser(null)
+      await updatePersonel(selectedPersonel.personel_id, newPersonel)
+      // Reload data to get updated view
+      const personelResponse = await fetchPersonel()
+      setPersonelData(personelResponse as PersonelData[])
+      setIsEditPersonelOpen(false)
+      setSelectedPersonel(null)
 
       toast({
         title: "Berhasil",
-        description: "Pengguna berhasil diperbarui",
+        description: "Personel berhasil diperbarui",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Gagal memperbarui pengguna",
+        description: "Gagal memperbarui personel",
         variant: "destructive",
       })
     }
   }
 
-  const handleDeleteUser = async () => {
-    if (!selectedUser) return
+  const handleDeletePersonel = async () => {
+    if (!selectedPersonel) return
 
     try {
-      await deleteUser(selectedUser.id)
-      setUserData((prev) => prev.filter((item) => item.id !== selectedUser.id))
-      setIsDeleteUserOpen(false)
-      setSelectedUser(null)
+      await deletePersonel(selectedPersonel.personel_id)
+      setPersonelData((prev) => prev.filter((item) => item.personel_id !== selectedPersonel.personel_id))
+      setIsDeletePersonelOpen(false)
+      setSelectedPersonel(null)
 
       toast({
         title: "Berhasil",
-        description: "Pengguna berhasil dihapus",
+        description: "Personel berhasil dihapus",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Gagal menghapus pengguna",
+        description: "Gagal menghapus personel",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Add new related data handlers (from cooperation form modals)
+  const handleAddNewMitra = async () => {
+    try {
+      const createdMitra = await createMitra(newMitra)
+      // Reload data to get updated view
+      const mitraResponse = await fetchMitraData()
+      setMitraData(mitraResponse as MitraData[])
+      setIsAddMitraModalOpen(false)
+      resetMitraForm()
+
+      toast({
+        title: "Berhasil",
+        description: "Mitra berhasil ditambahkan",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan mitra",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleAddNewPersonelFromModal = async () => {
+    try {
+      const createdPersonel = await createPersonel(newPersonel)
+      // Reload data to get updated view
+      const personelResponse = await fetchPersonel()
+      setPersonelData(personelResponse as PersonelData[])
+      setIsAddPersonelModalOpen(false)
+      resetPersonelForm()
+
+      toast({
+        title: "Berhasil",
+        description: "Personel berhasil ditambahkan",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan personel",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleAddNewJabatan = async () => {
+    try {
+      const createdJabatan = await createJabatan(newJabatan)
+      setJabatanData((prev) => [...prev, createdJabatan])
+      setIsAddJabatanModalOpen(false)
+      resetJabatanForm()
+
+      toast({
+        title: "Berhasil",
+        description: "Jabatan berhasil ditambahkan",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan jabatan",
         variant: "destructive",
       })
     }
@@ -556,25 +784,43 @@ export default function DataCentralPage() {
 
   const resetKerjasamaForm = () => {
     setNewKerjasama({
-      judul_kerjasama: "",
-      mitra_id: undefined,
-      jenis_dok_id: undefined,
+      no_dokumen: "",
       bidang_kerjasama: "",
+      judul_kerjasama: "",
       tanggal_mulai: "",
       tanggal_berakhir: "",
       status: "Aktif",
+      catatan: "",
+      jumlah_pihak: 2,
+      output_kerjasama: "",
+      tgl_input: new Date().toISOString().split("T")[0],
+      tgl_lapor: "",
+      status_lapor: "Belum Lapor",
+      tahun: new Date().getFullYear(),
       pelaksana: "",
+      mitra_id: undefined,
+      jenis_dok_id: undefined,
+      pj_upi: undefined,
+      pj_mitra: undefined,
+      penandatangan_upi: undefined,
+      penandatangan_mitra: undefined,
     })
   }
 
-  const resetUserForm = () => {
-    setNewUser({
-      name: "",
+  const resetPersonelForm = () => {
+    setNewPersonel({
+      nama: "",
       email: "",
-      username: "",
-      password: "",
-      is_active: true,
-      profile_picture: "",
+      kontak: "",
+      jabatan_id: undefined,
+      pihak: "UPI",
+    })
+  }
+
+  const resetJabatanForm = () => {
+    setNewJabatan({
+      nama_jabatan: "",
+      pihak: "UPI",
     })
   }
 
@@ -642,10 +888,10 @@ export default function DataCentralPage() {
         <TabsList className="w-full md:w-auto">
           <TabsTrigger value="mitra">Data Mitra</TabsTrigger>
           <TabsTrigger value="kerjasama">Data Kerjasama</TabsTrigger>
-          <TabsTrigger value="pengguna">Data Pengguna</TabsTrigger>
+          <TabsTrigger value="personel">Data Personel</TabsTrigger>
         </TabsList>
 
-        {/* DATA MITRA TAB */}
+        {/* DATA MITRA TAB - Keep existing implementation */}
         <TabsContent value="mitra" className="mt-4">
           <Card>
             <CardHeader>
@@ -1070,7 +1316,7 @@ export default function DataCentralPage() {
           </AlertDialog>
         </TabsContent>
 
-        {/* DATA KERJASAMA TAB */}
+        {/* DATA KERJASAMA TAB - Enhanced with improved form layout */}
         <TabsContent value="kerjasama" className="mt-4">
           <Card>
             <CardHeader>
@@ -1086,120 +1332,289 @@ export default function DataCentralPage() {
                       Tambah Kerjasama
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Tambah Kerjasama Baru</DialogTitle>
                       <DialogDescription>
                         Isi form berikut untuk menambahkan kerjasama baru ke dalam sistem
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="grid gap-2 md:col-span-2">
-                          <Label htmlFor="judul_kerjasama">Judul Kerjasama</Label>
-                          <Input
-                            id="judul_kerjasama"
-                            name="judul_kerjasama"
-                            value={newKerjasama.judul_kerjasama || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                            placeholder="Masukkan judul kerjasama"
-                          />
+                    <div className="grid gap-8 py-6">
+                      {/* Basic Information Section */}
+                      <div className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">Informasi Dasar</h3>
+                          <p className="text-sm text-gray-600">Informasi umum tentang kerjasama</p>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="mitra_id">Mitra</Label>
-                          <Select
-                            name="mitra_id"
-                            value={newKerjasama.mitra_id?.toString() || ""}
-                            onValueChange={(value) => handleSelectChange("mitra_id", value, "kerjasama")}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih mitra" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {mitraData.map((mitra) => (
-                                <SelectItem key={mitra.mitra_id} value={mitra.mitra_id.toString()}>
-                                  {mitra.nama_mitra}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="no_dokumen">Nomor Dokumen</Label>
+                            <Input
+                              id="no_dokumen"
+                              name="no_dokumen"
+                              value={newKerjasama.no_dokumen || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                              placeholder="Masukkan nomor dokumen"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tahun">Tahun</Label>
+                            <Input
+                              id="tahun"
+                              name="tahun"
+                              type="number"
+                              value={newKerjasama.tahun || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                              placeholder="Masukkan tahun"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <Select
+                              name="status"
+                              value={newKerjasama.status || "Aktif"}
+                              onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Aktif">Aktif</SelectItem>
+                                <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                                <SelectItem value="Draft">Draft</SelectItem>
+                                <SelectItem value="Berakhir">Berakhir</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="jenis_dok_id">Jenis Dokumen</Label>
-                          <Select
-                            name="jenis_dok_id"
-                            value={newKerjasama.jenis_dok_id?.toString() || ""}
-                            onValueChange={(value) => handleSelectChange("jenis_dok_id", value, "kerjasama")}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih jenis dokumen" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {jenisDokumenData.map((jenis) => (
-                                <SelectItem key={jenis.jenis_dok_id} value={jenis.jenis_dok_id.toString()}>
-                                  {jenis.nama_jenis}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      </div>
+
+                      {/* Partner and Document Information Section */}
+                      <div className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">Informasi Mitra & Dokumen</h3>
+                          <p className="text-sm text-gray-600">Detail mengenai mitra kerjasama dan jenis dokumen</p>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="bidang_kerjasama">Bidang Kerjasama</Label>
-                          <Input
-                            id="bidang_kerjasama"
-                            name="bidang_kerjasama"
-                            value={newKerjasama.bidang_kerjasama || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                            placeholder="Masukkan bidang kerjasama"
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="mitra_id">Mitra</Label>
+                            <SearchableSelect
+                              options={getMitraOptions()}
+                              value={newKerjasama.mitra_id}
+                              onValueChange={(value) => handleSelectChange("mitra_id", value.toString(), "kerjasama")}
+                              placeholder="Pilih mitra"
+                              searchPlaceholder="Cari mitra..."
+                              emptyText="Mitra tidak ditemukan"
+                              onAddNew={() => setIsAddMitraModalOpen(true)}
+                              addNewText="Tambah Mitra Baru"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="jenis_dok_id">Jenis Dokumen</Label>
+                            <div className="flex gap-2">
+                              <SearchableSelect
+                                options={getJenisDokumenOptions()}
+                                value={newKerjasama.jenis_dok_id}
+                                onValueChange={(value) =>
+                                  handleSelectChange("jenis_dok_id", value.toString(), "kerjasama")
+                                }
+                                placeholder="Pilih jenis dokumen"
+                                searchPlaceholder="Cari jenis dokumen..."
+                                emptyText="Jenis dokumen tidak ditemukan"
+                                className="flex-1"
+                              />
+                              <QuickAddInput
+                                onAdd={handleQuickAddJenisDokumen}
+                                placeholder="Nama jenis dokumen"
+                                addText="Tambah"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="jumlah_pihak">Jumlah Pihak</Label>
+                            <Input
+                              id="jumlah_pihak"
+                              name="jumlah_pihak"
+                              type="number"
+                              value={newKerjasama.jumlah_pihak || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                              placeholder="Masukkan jumlah pihak"
+                            />
+                          </div>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="pelaksana">Pelaksana</Label>
-                          <Input
-                            id="pelaksana"
-                            name="pelaksana"
-                            value={newKerjasama.pelaksana || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                            placeholder="Masukkan pelaksana"
-                          />
+                      </div>
+
+                      {/* Dates Section */}
+                      <div className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">Tanggal</h3>
+                          <p className="text-sm text-gray-600">Informasi periode kerjasama</p>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="status_kerjasama">Status</Label>
-                          <Select
-                            name="status"
-                            value={newKerjasama.status || "Aktif"}
-                            onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Aktif">Aktif</SelectItem>
-                              <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                              <SelectItem value="Draft">Draft</SelectItem>
-                              <SelectItem value="Berakhir">Berakhir</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="tanggal_mulai">Tanggal Mulai</Label>
+                            <Input
+                              id="tanggal_mulai"
+                              name="tanggal_mulai"
+                              type="date"
+                              value={newKerjasama.tanggal_mulai || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tanggal_berakhir">Tanggal Berakhir</Label>
+                            <Input
+                              id="tanggal_berakhir"
+                              name="tanggal_berakhir"
+                              type="date"
+                              value={newKerjasama.tanggal_berakhir || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tgl_input">Tanggal Input</Label>
+                            <Input
+                              id="tgl_input"
+                              name="tgl_input"
+                              type="date"
+                              value={newKerjasama.tgl_input || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tgl_lapor">Tanggal Lapor</Label>
+                            <Input
+                              id="tgl_lapor"
+                              name="tgl_lapor"
+                              type="date"
+                              value={newKerjasama.tgl_lapor || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                            />
+                          </div>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="tanggal_mulai_kerjasama">Tanggal Mulai</Label>
-                          <Input
-                            id="tanggal_mulai_kerjasama"
-                            name="tanggal_mulai"
-                            type="date"
-                            value={newKerjasama.tanggal_mulai || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                          />
+                      </div>
+
+                      {/* Personnel Section */}
+                      <div className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">Penanggung Jawab & Penandatangan</h3>
+                          <p className="text-sm text-gray-600">Informasi personel yang bertanggung jawab</p>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="tanggal_berakhir_kerjasama">Tanggal Berakhir</Label>
-                          <Input
-                            id="tanggal_berakhir_kerjasama"
-                            name="tanggal_berakhir"
-                            type="date"
-                            value={newKerjasama.tanggal_berakhir || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="pj_upi">PJ UPI</Label>
+                            <SearchableSelect
+                              options={getPersonelOptions("UPI")}
+                              value={newKerjasama.pj_upi}
+                              onValueChange={(value) => handleSelectChange("pj_upi", value.toString(), "kerjasama")}
+                              placeholder="Pilih PJ UPI"
+                              searchPlaceholder="Cari personel UPI..."
+                              emptyText="Personel UPI tidak ditemukan"
+                              onAddNew={() => {
+                                setNewPersonel({ pihak: "UPI" })
+                                setIsAddPersonelModalOpen(true)
+                              }}
+                              addNewText="Tambah Personel UPI Baru"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="pj_mitra">PJ Mitra</Label>
+                            <SearchableSelect
+                              options={getPersonelOptions("MITRA")}
+                              value={newKerjasama.pj_mitra}
+                              onValueChange={(value) => handleSelectChange("pj_mitra", value.toString(), "kerjasama")}
+                              placeholder="Pilih PJ Mitra"
+                              searchPlaceholder="Cari personel Mitra..."
+                              emptyText="Personel Mitra tidak ditemukan"
+                              onAddNew={() => {
+                                setNewPersonel({ pihak: "MITRA" })
+                                setIsAddPersonelModalOpen(true)
+                              }}
+                              addNewText="Tambah Personel Mitra Baru"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="penandatangan_upi">Penandatangan UPI</Label>
+                            <SearchableSelect
+                              options={getPersonelOptions("UPI")}
+                              value={newKerjasama.penandatangan_upi}
+                              onValueChange={(value) =>
+                                handleSelectChange("penandatangan_upi", value.toString(), "kerjasama")
+                              }
+                              placeholder="Pilih Penandatangan UPI"
+                              searchPlaceholder="Cari personel UPI..."
+                              emptyText="Personel UPI tidak ditemukan"
+                              onAddNew={() => {
+                                setNewPersonel({ pihak: "UPI" })
+                                setIsAddPersonelModalOpen(true)
+                              }}
+                              addNewText="Tambah Personel UPI Baru"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="penandatangan_mitra">Penandatangan Mitra</Label>
+                            <SearchableSelect
+                              options={getPersonelOptions("MITRA")}
+                              value={newKerjasama.penandatangan_mitra}
+                              onValueChange={(value) =>
+                                handleSelectChange("penandatangan_mitra", value.toString(), "kerjasama")
+                              }
+                              placeholder="Pilih Penandatangan Mitra"
+                              searchPlaceholder="Cari personel Mitra..."
+                              emptyText="Personel Mitra tidak ditemukan"
+                              onAddNew={() => {
+                                setNewPersonel({ pihak: "MITRA" })
+                                setIsAddPersonelModalOpen(true)
+                              }}
+                              addNewText="Tambah Personel Mitra Baru"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Additional Information Section */}
+                      <div className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
+                          <p className="text-sm text-gray-600">Informasi tambahan mengenai kerjasama</p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="output_kerjasama">Output Kerjasama</Label>
+                            <Textarea
+                              id="output_kerjasama"
+                              name="output_kerjasama"
+                              value={newKerjasama.output_kerjasama || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                              placeholder="Masukkan output kerjasama"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="catatan">Catatan</Label>
+                            <Textarea
+                              id="catatan"
+                              name="catatan"
+                              value={newKerjasama.catatan || ""}
+                              onChange={(e) => handleInputChange(e, "kerjasama")}
+                              placeholder="Masukkan catatan tambahan"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="status_lapor">Status Lapor</Label>
+                            <Select
+                              name="status_lapor"
+                              value={newKerjasama.status_lapor || "Belum Lapor"}
+                              onValueChange={(value) => handleSelectChange("status_lapor", value, "kerjasama")}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih status lapor" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Sudah Lapor">Sudah Lapor</SelectItem>
+                                <SelectItem value="Belum Lapor">Belum Lapor</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1380,14 +1795,26 @@ export default function DataCentralPage() {
                                     onClick={() => {
                                       setSelectedKerjasama(item)
                                       setNewKerjasama({
-                                        judul_kerjasama: item.judul_kerjasama,
-                                        mitra_id: item.mitra_id,
-                                        jenis_dok_id: item.jenis_dok_id,
+                                        no_dokumen: item.no_dokumen,
                                         bidang_kerjasama: item.bidang_kerjasama,
+                                        judul_kerjasama: item.judul_kerjasama,
                                         tanggal_mulai: item.tanggal_mulai,
                                         tanggal_berakhir: item.tanggal_berakhir,
                                         status: item.status,
+                                        catatan: item.catatan,
+                                        jumlah_pihak: item.jumlah_pihak,
+                                        output_kerjasama: item.output_kerjasama,
+                                        tgl_input: item.tgl_input,
+                                        tgl_lapor: item.tgl_lapor,
+                                        status_lapor: item.status_lapor,
+                                        tahun: item.tahun,
                                         pelaksana: item.pelaksana,
+                                        mitra_id: item.mitra_id,
+                                        jenis_dok_id: item.jenis_dok_id,
+                                        pj_upi: item.pj_upi,
+                                        pj_mitra: item.pj_mitra,
+                                        penandatangan_upi: item.penandatangan_upi,
+                                        penandatangan_mitra: item.penandatangan_mitra,
                                       })
                                       setIsEditKerjasamaOpen(true)
                                     }}
@@ -1482,7 +1909,7 @@ export default function DataCentralPage() {
 
           {/* View Kerjasama Dialog */}
           <Dialog open={isViewKerjasamaOpen} onOpenChange={setIsViewKerjasamaOpen}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle>Detail Kerjasama</DialogTitle>
               </DialogHeader>
@@ -1537,6 +1964,34 @@ export default function DataCentralPage() {
                       <h3 className="text-sm font-medium text-gray-500">Tanggal Berakhir</h3>
                       <p className="mt-1">{formatDate(selectedKerjasama.tanggal_berakhir)}</p>
                     </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Jumlah Pihak</h3>
+                      <p className="mt-1">{selectedKerjasama.jumlah_pihak}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Nomor Dokumen</h3>
+                      <p className="mt-1">{selectedKerjasama.no_dokumen}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Tanggal Input</h3>
+                      <p className="mt-1">{formatDate(selectedKerjasama.tgl_input)}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Tanggal Lapor</h3>
+                      <p className="mt-1">{formatDate(selectedKerjasama.tgl_lapor)}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Status Lapor</h3>
+                      <p className="mt-1">{selectedKerjasama.status_lapor}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <h3 className="text-sm font-medium text-gray-500">Catatan</h3>
+                      <p className="mt-1">{selectedKerjasama.catatan}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <h3 className="text-sm font-medium text-gray-500">Output Kerjasama</h3>
+                      <p className="mt-1">{selectedKerjasama.output_kerjasama}</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1548,118 +2003,285 @@ export default function DataCentralPage() {
 
           {/* Edit Kerjasama Dialog */}
           <Dialog open={isEditKerjasamaOpen} onOpenChange={setIsEditKerjasamaOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Kerjasama</DialogTitle>
                 <DialogDescription>Edit informasi kerjasama dalam sistem</DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="edit_judul_kerjasama">Judul Kerjasama</Label>
-                    <Input
-                      id="edit_judul_kerjasama"
-                      name="judul_kerjasama"
-                      value={newKerjasama.judul_kerjasama || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                      placeholder="Masukkan judul kerjasama"
-                    />
+              <div className="grid gap-8 py-6">
+                {/* Basic Information Section */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">Informasi Dasar</h3>
+                    <p className="text-sm text-gray-600">Informasi umum tentang kerjasama</p>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_mitra_id">Mitra</Label>
-                    <Select
-                      name="mitra_id"
-                      value={newKerjasama.mitra_id?.toString() || ""}
-                      onValueChange={(value) => handleSelectChange("mitra_id", value, "kerjasama")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih mitra" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mitraData.map((mitra) => (
-                          <SelectItem key={mitra.mitra_id} value={mitra.mitra_id.toString()}>
-                            {mitra.nama_mitra}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_no_dokumen">Nomor Dokumen</Label>
+                      <Input
+                        id="edit_no_dokumen"
+                        name="no_dokumen"
+                        value={newKerjasama.no_dokumen || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                        placeholder="Masukkan nomor dokumen"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_tahun">Tahun</Label>
+                      <Input
+                        id="edit_tahun"
+                        name="tahun"
+                        type="number"
+                        value={newKerjasama.tahun || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                        placeholder="Masukkan tahun"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_status">Status</Label>
+                      <Select
+                        name="status"
+                        value={newKerjasama.status || "Aktif"}
+                        onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Aktif">Aktif</SelectItem>
+                          <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                          <SelectItem value="Draft">Draft</SelectItem>
+                          <SelectItem value="Berakhir">Berakhir</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_jenis_dok_id">Jenis Dokumen</Label>
-                    <Select
-                      name="jenis_dok_id"
-                      value={newKerjasama.jenis_dok_id?.toString() || ""}
-                      onValueChange={(value) => handleSelectChange("jenis_dok_id", value, "kerjasama")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih jenis dokumen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {jenisDokumenData.map((jenis) => (
-                          <SelectItem key={jenis.jenis_dok_id} value={jenis.jenis_dok_id.toString()}>
-                            {jenis.nama_jenis}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                </div>
+
+                {/* Partner and Document Information Section */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">Informasi Mitra & Dokumen</h3>
+                    <p className="text-sm text-gray-600">Detail mengenai mitra kerjasama dan jenis dokumen</p>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_bidang_kerjasama">Bidang Kerjasama</Label>
-                    <Input
-                      id="edit_bidang_kerjasama"
-                      name="bidang_kerjasama"
-                      value={newKerjasama.bidang_kerjasama || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                      placeholder="Masukkan bidang kerjasama"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_mitra_id">Mitra</Label>
+                      <SearchableSelect
+                        options={getMitraOptions()}
+                        value={newKerjasama.mitra_id}
+                        onValueChange={(value) => handleSelectChange("mitra_id", value.toString(), "kerjasama")}
+                        placeholder="Pilih mitra"
+                        searchPlaceholder="Cari mitra..."
+                        emptyText="Mitra tidak ditemukan"
+                        onAddNew={() => setIsAddMitraModalOpen(true)}
+                        addNewText="Tambah Mitra Baru"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_jenis_dok_id">Jenis Dokumen</Label>
+                      <div className="flex gap-2">
+                        <SearchableSelect
+                          options={getJenisDokumenOptions()}
+                          value={newKerjasama.jenis_dok_id}
+                          onValueChange={(value) => handleSelectChange("jenis_dok_id", value.toString(), "kerjasama")}
+                          placeholder="Pilih jenis dokumen"
+                          searchPlaceholder="Cari jenis dokumen..."
+                          emptyText="Jenis dokumen tidak ditemukan"
+                          className="flex-1"
+                        />
+                        <QuickAddInput
+                          onAdd={handleQuickAddJenisDokumen}
+                          placeholder="Nama jenis dokumen"
+                          addText="Tambah"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_jumlah_pihak">Jumlah Pihak</Label>
+                      <Input
+                        id="edit_jumlah_pihak"
+                        name="jumlah_pihak"
+                        type="number"
+                        value={newKerjasama.jumlah_pihak || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                        placeholder="Masukkan jumlah pihak"
+                      />
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_pelaksana">Pelaksana</Label>
-                    <Input
-                      id="edit_pelaksana"
-                      name="pelaksana"
-                      value={newKerjasama.pelaksana || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                      placeholder="Masukkan pelaksana"
-                    />
+                </div>
+
+                {/* Dates Section */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">Tanggal</h3>
+                    <p className="text-sm text-gray-600">Informasi periode kerjasama</p>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_status_kerjasama">Status</Label>
-                    <Select
-                      name="status"
-                      value={newKerjasama.status || "Aktif"}
-                      onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Aktif">Aktif</SelectItem>
-                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                        <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Berakhir">Berakhir</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_tanggal_mulai">Tanggal Mulai</Label>
+                      <Input
+                        id="edit_tanggal_mulai"
+                        name="tanggal_mulai"
+                        type="date"
+                        value={newKerjasama.tanggal_mulai || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_tanggal_berakhir">Tanggal Berakhir</Label>
+                      <Input
+                        id="edit_tanggal_berakhir"
+                        name="tanggal_berakhir"
+                        type="date"
+                        value={newKerjasama.tanggal_berakhir || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_tgl_input">Tanggal Input</Label>
+                      <Input
+                        id="edit_tgl_input"
+                        name="tgl_input"
+                        type="date"
+                        value={newKerjasama.tgl_input || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_tgl_lapor">Tanggal Lapor</Label>
+                      <Input
+                        id="edit_tgl_lapor"
+                        name="tgl_lapor"
+                        type="date"
+                        value={newKerjasama.tgl_lapor || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                      />
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_tanggal_mulai_kerjasama">Tanggal Mulai</Label>
-                    <Input
-                      id="edit_tanggal_mulai_kerjasama"
-                      name="tanggal_mulai"
-                      type="date"
-                      value={newKerjasama.tanggal_mulai || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                    />
+                </div>
+
+                {/* Personnel Section */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">Penanggung Jawab & Penandatangan</h3>
+                    <p className="text-sm text-gray-600">Informasi personel yang bertanggung jawab</p>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_tanggal_berakhir_kerjasama">Tanggal Berakhir</Label>
-                    <Input
-                      id="edit_tanggal_berakhir_kerjasama"
-                      name="tanggal_berakhir"
-                      type="date"
-                      value={newKerjasama.tanggal_berakhir || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_pj_upi">PJ UPI</Label>
+                      <SearchableSelect
+                        options={getPersonelOptions("UPI")}
+                        value={newKerjasama.pj_upi}
+                        onValueChange={(value) => handleSelectChange("pj_upi", value.toString(), "kerjasama")}
+                        placeholder="Pilih PJ UPI"
+                        searchPlaceholder="Cari personel UPI..."
+                        emptyText="Personel UPI tidak ditemukan"
+                        onAddNew={() => {
+                          setNewPersonel({ pihak: "UPI" })
+                          setIsAddPersonelModalOpen(true)
+                        }}
+                        addNewText="Tambah Personel UPI Baru"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_pj_mitra">PJ Mitra</Label>
+                      <SearchableSelect
+                        options={getPersonelOptions("MITRA")}
+                        value={newKerjasama.pj_mitra}
+                        onValueChange={(value) => handleSelectChange("pj_mitra", value.toString(), "kerjasama")}
+                        placeholder="Pilih PJ Mitra"
+                        searchPlaceholder="Cari personel Mitra..."
+                        emptyText="Personel Mitra tidak ditemukan"
+                        onAddNew={() => {
+                          setNewPersonel({ pihak: "MITRA" })
+                          setIsAddPersonelModalOpen(true)
+                        }}
+                        addNewText="Tambah Personel Mitra Baru"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_penandatangan_upi">Penandatangan UPI</Label>
+                      <SearchableSelect
+                        options={getPersonelOptions("UPI")}
+                        value={newKerjasama.penandatangan_upi}
+                        onValueChange={(value) =>
+                          handleSelectChange("penandatangan_upi", value.toString(), "kerjasama")
+                        }
+                        placeholder="Pilih Penandatangan UPI"
+                        searchPlaceholder="Cari personel UPI..."
+                        emptyText="Personel UPI tidak ditemukan"
+                        onAddNew={() => {
+                          setNewPersonel({ pihak: "UPI" })
+                          setIsAddPersonelModalOpen(true)
+                        }}
+                        addNewText="Tambah Personel UPI Baru"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_penandatangan_mitra">Penandatangan Mitra</Label>
+                      <SearchableSelect
+                        options={getPersonelOptions("MITRA")}
+                        value={newKerjasama.penandatangan_mitra}
+                        onValueChange={(value) =>
+                          handleSelectChange("penandatangan_mitra", value.toString(), "kerjasama")
+                        }
+                        placeholder="Pilih Penandatangan Mitra"
+                        searchPlaceholder="Cari personel Mitra..."
+                        emptyText="Personel Mitra tidak ditemukan"
+                        onAddNew={() => {
+                          setNewPersonel({ pihak: "MITRA" })
+                          setIsAddPersonelModalOpen(true)
+                        }}
+                        addNewText="Tambah Personel Mitra Baru"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Information Section */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
+                    <p className="text-sm text-gray-600">Informasi tambahan mengenai kerjasama</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_output_kerjasama">Output Kerjasama</Label>
+                      <Textarea
+                        id="edit_output_kerjasama"
+                        name="output_kerjasama"
+                        value={newKerjasama.output_kerjasama || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                        placeholder="Masukkan output kerjasama"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_catatan">Catatan</Label>
+                      <Textarea
+                        id="edit_catatan"
+                        name="catatan"
+                        value={newKerjasama.catatan || ""}
+                        onChange={(e) => handleInputChange(e, "kerjasama")}
+                        placeholder="Masukkan catatan tambahan"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_status_lapor">Status Lapor</Label>
+                      <Select
+                        name="status_lapor"
+                        value={newKerjasama.status_lapor || "Belum Lapor"}
+                        onValueChange={(value) => handleSelectChange("status_lapor", value, "kerjasama")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih status lapor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Sudah Lapor">Sudah Lapor</SelectItem>
+                          <SelectItem value="Belum Lapor">Belum Lapor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1692,50 +2314,56 @@ export default function DataCentralPage() {
           </AlertDialog>
         </TabsContent>
 
-        {/* DATA PENGGUNA TAB */}
-        <TabsContent value="pengguna" className="mt-4">
+        {/* DATA PERSONEL TAB */}
+        <TabsContent value="personel" className="mt-4">
           <Card>
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <CardTitle>Daftar Pengguna</CardTitle>
-                  <CardDescription>Kelola data pengguna yang terdaftar dalam sistem</CardDescription>
+                  <CardTitle>Daftar Personel</CardTitle>
+                  <CardDescription>Kelola data personel yang terdaftar dalam sistem</CardDescription>
                 </div>
-                <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+                <Dialog open={isAddPersonelOpen} onOpenChange={setIsAddPersonelOpen}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="mr-2 h-4 w-4" />
-                      Tambah Pengguna
+                      Tambah Personel
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+                      <DialogTitle>Tambah Personel Baru</DialogTitle>
                       <DialogDescription>
-                        Isi form berikut untuk menambahkan pengguna baru ke dalam sistem
+                        Isi form berikut untuk menambahkan personel baru ke dalam sistem
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                          <Label htmlFor="name">Nama Lengkap</Label>
+                          <Label htmlFor="nama">Nama Lengkap</Label>
                           <Input
-                            id="name"
-                            name="name"
-                            value={newUser.name || ""}
-                            onChange={(e) => handleInputChange(e, "user")}
+                            id="nama"
+                            name="nama"
+                            value={newPersonel.nama || ""}
+                            onChange={(e) => handleInputChange(e, "personel")}
                             placeholder="Masukkan nama lengkap"
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="username">Username</Label>
-                          <Input
-                            id="username"
-                            name="username"
-                            value={newUser.username || ""}
-                            onChange={(e) => handleInputChange(e, "user")}
-                            placeholder="Masukkan username"
-                          />
+                          <Label htmlFor="pihak">Pihak</Label>
+                          <Select
+                            name="pihak"
+                            value={newPersonel.pihak || "UPI"}
+                            onValueChange={(value) => handleSelectChange("pihak", value, "personel")}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih pihak" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="UPI">UPI</SelectItem>
+                              <SelectItem value="Mitra">Mitra</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="grid gap-2 md:col-span-2">
                           <Label htmlFor="email">Email</Label>
@@ -1743,55 +2371,41 @@ export default function DataCentralPage() {
                             id="email"
                             name="email"
                             type="email"
-                            value={newUser.email || ""}
-                            onChange={(e) => handleInputChange(e, "user")}
+                            value={newPersonel.email || ""}
+                            onChange={(e) => handleInputChange(e, "personel")}
                             placeholder="Masukkan email"
                           />
                         </div>
                         <div className="grid gap-2 md:col-span-2">
-                          <Label htmlFor="password">Password</Label>
+                          <Label htmlFor="kontak">Kontak</Label>
                           <Input
-                            id="password"
-                            name="password"
-                            type="password"
-                            value={newUser.password || ""}
-                            onChange={(e) => handleInputChange(e, "user")}
-                            placeholder="Masukkan password"
+                            id="kontak"
+                            name="kontak"
+                            value={newPersonel.kontak || ""}
+                            onChange={(e) => handleInputChange(e, "personel")}
+                            placeholder="Masukkan kontak"
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="is_active">Status</Label>
-                          <Select
-                            name="is_active"
-                            value={newUser.is_active ? "true" : "false"}
-                            onValueChange={(value) => handleSelectChange("is_active", value, "user")}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="true">Aktif</SelectItem>
-                              <SelectItem value="false">Tidak Aktif</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="profile_picture">URL Foto Profil</Label>
-                          <Input
-                            id="profile_picture"
-                            name="profile_picture"
-                            value={newUser.profile_picture || ""}
-                            onChange={(e) => handleInputChange(e, "user")}
-                            placeholder="Masukkan URL foto profil"
+                          <Label htmlFor="jabatan_id">Jabatan</Label>
+                          <SearchableSelect
+                            options={getJabatanOptions(newPersonel.pihak as "UPI" | "MITRA")}
+                            value={newPersonel.jabatan_id}
+                            onValueChange={(value) => handleSelectChange("jabatan_id", value.toString(), "personel")}
+                            placeholder="Pilih jabatan"
+                            searchPlaceholder="Cari jabatan..."
+                            emptyText="Jabatan tidak ditemukan"
+                            onAddNew={() => setIsAddJabatanModalOpen(true)}
+                            addNewText="Tambah Jabatan Baru"
                           />
                         </div>
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
+                      <Button variant="outline" onClick={() => setIsAddPersonelOpen(false)}>
                         Batal
                       </Button>
-                      <Button onClick={handleAddUser}>Simpan</Button>
+                      <Button onClick={handleAddPersonel}>Simpan</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -1804,13 +2418,24 @@ export default function DataCentralPage() {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                     <Input
                       type="search"
-                      placeholder="Cari pengguna..."
+                      placeholder="Cari personel..."
                       className="pl-8"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <Select value={filterPihak} onValueChange={setFilterPihak}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Filter Pihak" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Pihak</SelectItem>
+                        <SelectItem value="UPI">UPI</SelectItem>
+                        <SelectItem value="Mitra">Mitra</SelectItem>
+                      </SelectContent>
+                    </Select>
+
                     <div className="flex items-center gap-1">
                       <Select value={filterYearFrom} onValueChange={setFilterYearFrom}>
                         <SelectTrigger className="w-[120px]">
@@ -1843,8 +2468,8 @@ export default function DataCentralPage() {
 
                     <Button
                       variant="outline"
-                      onClick={() => handleExportToCSV(filteredUsers, "users_data")}
-                      disabled={filteredUsers.length === 0}
+                      onClick={() => handleExportToCSV(filteredPersonel, "personel_data")}
+                      disabled={filteredPersonel.length === 0}
                     >
                       <FileDown className="mr-2 h-4 w-4" />
                       Export
@@ -1858,38 +2483,32 @@ export default function DataCentralPage() {
                       <TableRow>
                         <TableHead>Nama</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Username</TableHead>
+                        <TableHead>Kontak</TableHead>
+                        <TableHead>Jabatan</TableHead>
+                        <TableHead>Pihak</TableHead>
                         <TableHead>Tanggal Dibuat</TableHead>
-                        <TableHead>Status</TableHead>
                         <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-10">
+                          <TableCell colSpan={7} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
                               <span className="mt-2">Loading...</span>
                             </div>
                           </TableCell>
                         </TableRow>
-                      ) : currentUsers.length > 0 ? (
-                        currentUsers.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
+                      ) : currentPersonel.length > 0 ? (
+                        currentPersonel.map((item) => (
+                          <TableRow key={item.personel_id}>
+                            <TableCell className="font-medium">{item.nama}</TableCell>
                             <TableCell>{item.email}</TableCell>
-                            <TableCell>{item.username}</TableCell>
+                            <TableCell>{item.kontak}</TableCell>
+                            <TableCell>{item.nama_jabatan}</TableCell>
+                            <TableCell>{item.pihak}</TableCell>
                             <TableCell>{formatDate(item.created_at)}</TableCell>
-                            <TableCell>
-                              <Badge
-                                className={`${
-                                  item.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {item.is_active ? "Aktif" : "Tidak Aktif"}
-                              </Badge>
-                            </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -1900,8 +2519,8 @@ export default function DataCentralPage() {
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem
                                     onClick={() => {
-                                      setSelectedUser(item)
-                                      setIsViewUserOpen(true)
+                                      setSelectedPersonel(item)
+                                      setIsViewPersonelOpen(true)
                                     }}
                                   >
                                     <Eye className="mr-2 h-4 w-4" />
@@ -1909,16 +2528,15 @@ export default function DataCentralPage() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => {
-                                      setSelectedUser(item)
-                                      setNewUser({
-                                        name: item.name,
+                                      setSelectedPersonel(item)
+                                      setNewPersonel({
+                                        nama: item.nama,
                                         email: item.email,
-                                        username: item.username,
-                                        is_active: item.is_active,
-                                        profile_picture: item.profile_picture,
-                                        password: "", // Don't pre-fill password
+                                        kontak: item.kontak,
+                                        jabatan_id: item.jabatan_id,
+                                        pihak: item.pihak,
                                       })
-                                      setIsEditUserOpen(true)
+                                      setIsEditPersonelOpen(true)
                                     }}
                                   >
                                     <Edit className="mr-2 h-4 w-4" />
@@ -1927,8 +2545,8 @@ export default function DataCentralPage() {
                                   <DropdownMenuItem
                                     className="text-red-600"
                                     onClick={() => {
-                                      setSelectedUser(item)
-                                      setIsDeleteUserOpen(true)
+                                      setSelectedPersonel(item)
+                                      setIsDeletePersonelOpen(true)
                                     }}
                                   >
                                     <Trash className="mr-2 h-4 w-4" />
@@ -1941,7 +2559,7 @@ export default function DataCentralPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-10">
+                          <TableCell colSpan={7} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <AlertCircle className="h-8 w-8 text-gray-400" />
                               <span className="mt-2">Tidak ada data yang ditemukan</span>
@@ -1953,12 +2571,12 @@ export default function DataCentralPage() {
                   </Table>
                 </div>
 
-                {/* Pagination for Users */}
-                {filteredUsers.length > 0 && (
+                {/* Pagination for Personel */}
+                {filteredPersonel.length > 0 && (
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-500">
-                      Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredUsers.length)} dari{" "}
-                      {filteredUsers.length} data
+                      Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredPersonel.length)} dari{" "}
+                      {filteredPersonel.length} data
                     </div>
                     <div className="flex items-center space-x-2">
                       <Button
@@ -1970,14 +2588,14 @@ export default function DataCentralPage() {
                         Sebelumnya
                       </Button>
                       <div className="flex items-center">
-                        {Array.from({ length: Math.min(5, totalUserPages) }, (_, i) => {
+                        {Array.from({ length: Math.min(5, totalPersonelPages) }, (_, i) => {
                           let pageNumber
-                          if (totalUserPages <= 5) {
+                          if (totalPersonelPages <= 5) {
                             pageNumber = i + 1
                           } else if (currentPage <= 3) {
                             pageNumber = i + 1
-                          } else if (currentPage >= totalUserPages - 2) {
-                            pageNumber = totalUserPages - 4 + i
+                          } else if (currentPage >= totalPersonelPages - 2) {
+                            pageNumber = totalPersonelPages - 4 + i
                           } else {
                             pageNumber = currentPage - 2 + i
                           }
@@ -1998,7 +2616,7 @@ export default function DataCentralPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === totalUserPages}
+                        disabled={currentPage === totalPersonelPages}
                       >
                         Selanjutnya
                       </Button>
@@ -2009,88 +2627,82 @@ export default function DataCentralPage() {
             </CardContent>
           </Card>
 
-          {/* View User Dialog */}
-          <Dialog open={isViewUserOpen} onOpenChange={setIsViewUserOpen}>
+          {/* View Personel Dialog */}
+          <Dialog open={isViewPersonelOpen} onOpenChange={setIsViewPersonelOpen}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Detail Pengguna</DialogTitle>
+                <DialogTitle>Detail Personel</DialogTitle>
               </DialogHeader>
-              {selectedUser && (
+              {selectedPersonel && (
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Nama Lengkap</h3>
-                      <p className="mt-1 font-medium">{selectedUser.name}</p>
+                      <p className="mt-1 font-medium">{selectedPersonel.nama}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Username</h3>
-                      <p className="mt-1">{selectedUser.username}</p>
+                      <h3 className="text-sm font-medium text-gray-500">Pihak</h3>
+                      <p className="mt-1">{selectedPersonel.pihak}</p>
                     </div>
                     <div className="md:col-span-2">
                       <h3 className="text-sm font-medium text-gray-500">Email</h3>
-                      <p className="mt-1">{selectedUser.email}</p>
+                      <p className="mt-1">{selectedPersonel.email}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <h3 className="text-sm font-medium text-gray-500">Kontak</h3>
+                      <p className="mt-1">{selectedPersonel.kontak}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                      <Badge
-                        className={`mt-1 ${
-                          selectedUser.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {selectedUser.is_active ? "Aktif" : "Tidak Aktif"}
-                      </Badge>
+                      <h3 className="text-sm font-medium text-gray-500">Jabatan</h3>
+                      <p className="mt-1">{selectedPersonel.nama_jabatan}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Tanggal Dibuat</h3>
-                      <p className="mt-1">{formatDate(selectedUser.created_at)}</p>
+                      <p className="mt-1">{formatDate(selectedPersonel.created_at)}</p>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Terakhir Diperbarui</h3>
-                      <p className="mt-1">{formatDate(selectedUser.updated_at)}</p>
-                    </div>
-                    {selectedUser.profile_picture && (
-                      <div className="md:col-span-2">
-                        <h3 className="text-sm font-medium text-gray-500">Foto Profil</h3>
-                        <p className="mt-1 text-sm text-blue-600 break-all">{selectedUser.profile_picture}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
               <DialogFooter>
-                <Button onClick={() => setIsViewUserOpen(false)}>Tutup</Button>
+                <Button onClick={() => setIsViewPersonelOpen(false)}>Tutup</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* Edit User Dialog */}
-          <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+          {/* Edit Personel Dialog */}
+          <Dialog open={isEditPersonelOpen} onOpenChange={setIsEditPersonelOpen}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Edit Pengguna</DialogTitle>
-                <DialogDescription>Edit informasi pengguna dalam sistem</DialogDescription>
+                <DialogTitle>Edit Personel</DialogTitle>
+                <DialogDescription>Edit informasi personel dalam sistem</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="edit_name">Nama Lengkap</Label>
+                    <Label htmlFor="edit_nama">Nama Lengkap</Label>
                     <Input
-                      id="edit_name"
-                      name="name"
-                      value={newUser.name || ""}
-                      onChange={(e) => handleInputChange(e, "user")}
+                      id="edit_nama"
+                      name="nama"
+                      value={newPersonel.nama || ""}
+                      onChange={(e) => handleInputChange(e, "personel")}
                       placeholder="Masukkan nama lengkap"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit_username">Username</Label>
-                    <Input
-                      id="edit_username"
-                      name="username"
-                      value={newUser.username || ""}
-                      onChange={(e) => handleInputChange(e, "user")}
-                      placeholder="Masukkan username"
-                    />
+                    <Label htmlFor="edit_pihak">Pihak</Label>
+                    <Select
+                      name="pihak"
+                      value={newPersonel.pihak || "UPI"}
+                      onValueChange={(value) => handleSelectChange("pihak", value, "personel")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih pihak" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="UPI">UPI</SelectItem>
+                        <SelectItem value="Mitra">Mitra</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid gap-2 md:col-span-2">
                     <Label htmlFor="edit_email">Email</Label>
@@ -2098,72 +2710,58 @@ export default function DataCentralPage() {
                       id="edit_email"
                       name="email"
                       type="email"
-                      value={newUser.email || ""}
-                      onChange={(e) => handleInputChange(e, "user")}
+                      value={newPersonel.email || ""}
+                      onChange={(e) => handleInputChange(e, "personel")}
                       placeholder="Masukkan email"
                     />
                   </div>
                   <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="edit_password">Password Baru (kosongkan jika tidak ingin mengubah)</Label>
+                    <Label htmlFor="edit_kontak">Kontak</Label>
                     <Input
-                      id="edit_password"
-                      name="password"
-                      type="password"
-                      value={newUser.password || ""}
-                      onChange={(e) => handleInputChange(e, "user")}
-                      placeholder="Masukkan password baru"
+                      id="edit_kontak"
+                      name="kontak"
+                      value={newPersonel.kontak || ""}
+                      onChange={(e) => handleInputChange(e, "personel")}
+                      placeholder="Masukkan kontak"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit_is_active">Status</Label>
-                    <Select
-                      name="is_active"
-                      value={newUser.is_active ? "true" : "false"}
-                      onValueChange={(value) => handleSelectChange("is_active", value, "user")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="true">Aktif</SelectItem>
-                        <SelectItem value="false">Tidak Aktif</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_profile_picture">URL Foto Profil</Label>
-                    <Input
-                      id="edit_profile_picture"
-                      name="profile_picture"
-                      value={newUser.profile_picture || ""}
-                      onChange={(e) => handleInputChange(e, "user")}
-                      placeholder="Masukkan URL foto profil"
+                    <Label htmlFor="edit_jabatan_id">Jabatan</Label>
+                    <SearchableSelect
+                      options={getJabatanOptions(newPersonel.pihak as "UPI" | "MITRA")}
+                      value={newPersonel.jabatan_id}
+                      onValueChange={(value) => handleSelectChange("jabatan_id", value.toString(), "personel")}
+                      placeholder="Pilih jabatan"
+                      searchPlaceholder="Cari jabatan..."
+                      emptyText="Jabatan tidak ditemukan"
+                      onAddNew={() => setIsAddJabatanModalOpen(true)}
+                      addNewText="Tambah Jabatan Baru"
                     />
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
+                <Button variant="outline" onClick={() => setIsEditPersonelOpen(false)}>
                   Batal
                 </Button>
-                <Button onClick={handleEditUser}>Simpan Perubahan</Button>
+                <Button onClick={handleEditPersonel}>Simpan Perubahan</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* Delete User Dialog */}
-          <AlertDialog open={isDeleteUserOpen} onOpenChange={setIsDeleteUserOpen}>
+          {/* Delete Personel Dialog */}
+          <AlertDialog open={isDeletePersonelOpen} onOpenChange={setIsDeletePersonelOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Konfirmasi Hapus</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Apakah Anda yakin ingin menghapus pengguna "{selectedUser?.name}"? Tindakan ini tidak dapat
+                  Apakah Anda yakin ingin menghapus personel "{selectedPersonel?.nama}"? Tindakan ini tidak dapat
                   dibatalkan.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteUser} className="bg-red-600 hover:bg-red-700">
+                <AlertDialogAction onClick={handleDeletePersonel} className="bg-red-600 hover:bg-red-700">
                   Hapus
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -2171,6 +2769,208 @@ export default function DataCentralPage() {
           </AlertDialog>
         </TabsContent>
       </Tabs>
+
+      {/* Add New Mitra Modal */}
+      <Dialog open={isAddMitraModalOpen} onOpenChange={setIsAddMitraModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Mitra Baru</DialogTitle>
+            <DialogDescription>Isi form berikut untuk menambahkan mitra baru ke dalam sistem</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="modal_nama_mitra">Nama Mitra</Label>
+                <Input
+                  id="modal_nama_mitra"
+                  name="nama_mitra"
+                  value={newMitra.nama_mitra || ""}
+                  onChange={(e) => handleInputChange(e, "mitra")}
+                  placeholder="Masukkan nama mitra"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="modal_negara_id">Negara</Label>
+                <Select
+                  name="negara_id"
+                  value={newMitra.negara_id?.toString() || ""}
+                  onValueChange={(value) => handleSelectChange("negara_id", value, "mitra")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih negara" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {negaraData.map((negara) => (
+                      <SelectItem key={negara.negara_id} value={negara.negara_id.toString()}>
+                        {negara.nama_negara}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="modal_jenis_partner_id">Jenis Partner</Label>
+                <Select
+                  name="jenis_partner_id"
+                  value={newMitra.jenis_partner_id?.toString() || ""}
+                  onValueChange={(value) => handleSelectChange("jenis_partner_id", value, "mitra")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih jenis partner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jenisPartnerData.map((jenis) => (
+                      <SelectItem key={jenis.jenis_partner_id} value={jenis.jenis_partner_id.toString()}>
+                        {jenis.nama_jenis}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="modal_alamat">Alamat</Label>
+                <Textarea
+                  id="modal_alamat"
+                  name="alamat"
+                  value={newMitra.alamat || ""}
+                  onChange={(e) => handleInputChange(e, "mitra")}
+                  placeholder="Masukkan alamat lengkap"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddMitraModalOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleAddNewMitra}>Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add New Personel Modal */}
+      <Dialog open={isAddPersonelModalOpen} onOpenChange={setIsAddPersonelModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Personel Baru</DialogTitle>
+            <DialogDescription>Isi form berikut untuk menambahkan personel baru ke dalam sistem</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="modal_nama">Nama Lengkap</Label>
+                <Input
+                  id="modal_nama"
+                  name="nama"
+                  value={newPersonel.nama || ""}
+                  onChange={(e) => handleInputChange(e, "personel")}
+                  placeholder="Masukkan nama lengkap"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="modal_pihak">Pihak</Label>
+                <Select
+                  name="pihak"
+                  value={newPersonel.pihak || "UPI"}
+                  onValueChange={(value) => handleSelectChange("pihak", value, "personel")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih pihak" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UPI">UPI</SelectItem>
+                    <SelectItem value="Mitra">Mitra</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="modal_email">Email</Label>
+                <Input
+                  id="modal_email"
+                  name="email"
+                  type="email"
+                  value={newPersonel.email || ""}
+                  onChange={(e) => handleInputChange(e, "personel")}
+                  placeholder="Masukkan email"
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="modal_kontak">Kontak</Label>
+                <Input
+                  id="modal_kontak"
+                  name="kontak"
+                  value={newPersonel.kontak || ""}
+                  onChange={(e) => handleInputChange(e, "personel")}
+                  placeholder="Masukkan kontak"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="modal_jabatan_id">Jabatan</Label>
+                <SearchableSelect
+                  options={getJabatanOptions(newPersonel.pihak as "UPI" | "MITRA")}
+                  value={newPersonel.jabatan_id}
+                  onValueChange={(value) => handleSelectChange("jabatan_id", value.toString(), "personel")}
+                  placeholder="Pilih jabatan"
+                  searchPlaceholder="Cari jabatan..."
+                  emptyText="Jabatan tidak ditemukan"
+                  onAddNew={() => setIsAddJabatanModalOpen(true)}
+                  addNewText="Tambah Jabatan Baru"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddPersonelModalOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleAddNewPersonelFromModal}>Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add New Jabatan Modal */}
+      <Dialog open={isAddJabatanModalOpen} onOpenChange={setIsAddJabatanModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tambah Jabatan Baru</DialogTitle>
+            <DialogDescription>Isi form berikut untuk menambahkan jabatan baru ke dalam sistem</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="modal_nama_jabatan">Nama Jabatan</Label>
+              <Input
+                id="modal_nama_jabatan"
+                name="nama_jabatan"
+                value={newJabatan.nama_jabatan || ""}
+                onChange={(e) => handleInputChange(e, "jabatan")}
+                placeholder="Masukkan nama jabatan"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="modal_pihak">Pihak</Label>
+              <Select
+                name="pihak"
+                value={newJabatan.pihak || "UPI"}
+                onValueChange={(value) => handleSelectChange("pihak", value, "jabatan")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih pihak" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UPI">UPI</SelectItem>
+                  <SelectItem value="Mitra">Mitra</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddJabatanModalOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleAddNewJabatan}>Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }

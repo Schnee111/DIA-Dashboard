@@ -2,20 +2,58 @@
 import { supabase } from "@/lib/supabaseClient"
 
 // Define TypeScript interfaces based on database schema
+// Add new interfaces for personel and jabatan
+interface PersonelItem {
+  personel_id: number
+  nama: string
+  email?: string
+  kontak?: string
+  jabatan_id?: number
+  pihak: "UPI" | "MITRA"
+  nama_jabatan?: string
+  created_at: string
+  updated_at: string
+}
+
+interface JabatanItem {
+  jabatan_id: number
+  nama_jabatan: string
+  pihak: "UPI" | "MITRA"
+  created_at: string
+  updated_at: string
+}
+
+// Update KerjasamaItem interface to match v_semua_kerjasama view
 interface KerjasamaItem {
   kerjasama_id: number
-  judul_kerjasama: string
-  nama_mitra: string
-  nama_negara: string
-  jenis_dokumen: string
+  no_dokumen?: string
   bidang_kerjasama?: string
+  judul_kerjasama: string
   tanggal_mulai: string
   tanggal_berakhir: string
   status: string
+  catatan?: string
+  jumlah_pihak?: number
+  output_kerjasama?: string
+  tgl_input?: string
+  tgl_lapor?: string
+  status_lapor?: string
+  tahun?: number
   pelaksana?: string
+  nama_mitra: string
+  nama_negara: string
+  jenis_dokumen: string
+  nama_pj_upi?: string
+  nama_pj_mitra?: string
+  nama_penandatangan_upi?: string
+  nama_penandatangan_mitra?: string
+  // Foreign key IDs for form handling
   mitra_id?: number
   jenis_dok_id?: number
-  [key: string]: any
+  pj_upi?: number
+  pj_mitra?: number
+  penandatangan_upi?: number
+  penandatangan_mitra?: number
 }
 
 interface MitraItem {
@@ -185,6 +223,39 @@ export async function fetchJenisDokumen(): Promise<JenisDokumenItem[]> {
   return data || []
 }
 
+// Add new fetch functions
+export async function fetchPersonel(): Promise<PersonelItem[]> {
+  const { data, error } = await supabase.from("personel").select(`
+      *,
+      jabatan:jabatan_id (
+        nama_jabatan
+      )
+    `)
+
+  if (error) {
+    console.error("Error fetching personel:", error)
+    throw error
+  }
+
+  return (
+    data?.map((item) => ({
+      ...item,
+      nama_jabatan: item.jabatan?.nama_jabatan,
+    })) || []
+  )
+}
+
+export async function fetchJabatan(): Promise<JabatanItem[]> {
+  const { data, error } = await supabase.from("jabatan").select("*")
+
+  if (error) {
+    console.error("Error fetching jabatan:", error)
+    throw error
+  }
+
+  return data || []
+}
+
 /**
  * Fetch kerjasama data from Supabase using view
  * @returns {Promise<KerjasamaItem[]>} Array of kerjasama objects
@@ -347,14 +418,26 @@ export async function createKerjasama(kerjasamaData: Partial<KerjasamaItem>): Pr
       .from("kerjasama")
       .insert([
         {
-          judul_kerjasama: kerjasamaData.judul_kerjasama,
-          mitra_id: kerjasamaData.mitra_id,
-          jenis_dok_id: kerjasamaData.jenis_dok_id,
+          no_dokumen: kerjasamaData.no_dokumen,
           bidang_kerjasama: kerjasamaData.bidang_kerjasama,
+          judul_kerjasama: kerjasamaData.judul_kerjasama,
           tanggal_mulai: kerjasamaData.tanggal_mulai,
           tanggal_berakhir: kerjasamaData.tanggal_berakhir,
           status: kerjasamaData.status,
+          catatan: kerjasamaData.catatan,
+          jumlah_pihak: kerjasamaData.jumlah_pihak,
+          output_kerjasama: kerjasamaData.output_kerjasama,
+          tgl_input: kerjasamaData.tgl_input,
+          tgl_lapor: kerjasamaData.tgl_lapor,
+          status_lapor: kerjasamaData.status_lapor,
+          tahun: kerjasamaData.tahun,
           pelaksana: kerjasamaData.pelaksana,
+          mitra_id: kerjasamaData.mitra_id,
+          jenis_dok_id: kerjasamaData.jenis_dok_id,
+          pj_upi: kerjasamaData.pj_upi,
+          pj_mitra: kerjasamaData.pj_mitra,
+          penandatangan_upi: kerjasamaData.penandatangan_upi,
+          penandatangan_mitra: kerjasamaData.penandatangan_mitra,
         },
       ])
       .select()
@@ -377,14 +460,26 @@ export async function updateKerjasama(id: number, kerjasamaData: Partial<Kerjasa
     const { data, error } = await supabase
       .from("kerjasama")
       .update({
-        judul_kerjasama: kerjasamaData.judul_kerjasama,
-        mitra_id: kerjasamaData.mitra_id,
-        jenis_dok_id: kerjasamaData.jenis_dok_id,
+        no_dokumen: kerjasamaData.no_dokumen,
         bidang_kerjasama: kerjasamaData.bidang_kerjasama,
+        judul_kerjasama: kerjasamaData.judul_kerjasama,
         tanggal_mulai: kerjasamaData.tanggal_mulai,
         tanggal_berakhir: kerjasamaData.tanggal_berakhir,
         status: kerjasamaData.status,
+        catatan: kerjasamaData.catatan,
+        jumlah_pihak: kerjasamaData.jumlah_pihak,
+        output_kerjasama: kerjasamaData.output_kerjasama,
+        tgl_input: kerjasamaData.tgl_input,
+        tgl_lapor: kerjasamaData.tgl_lapor,
+        status_lapor: kerjasamaData.status_lapor,
+        tahun: kerjasamaData.tahun,
         pelaksana: kerjasamaData.pelaksana,
+        mitra_id: kerjasamaData.mitra_id,
+        jenis_dok_id: kerjasamaData.jenis_dok_id,
+        pj_upi: kerjasamaData.pj_upi,
+        pj_mitra: kerjasamaData.pj_mitra,
+        penandatangan_upi: kerjasamaData.penandatangan_upi,
+        penandatangan_mitra: kerjasamaData.penandatangan_mitra,
       })
       .eq("kerjasama_id", id)
       .select()
@@ -487,6 +582,127 @@ export async function deleteUser(id: string): Promise<boolean> {
     return true
   } catch (error) {
     console.error("Error deleting user:", error)
+    throw error
+  }
+}
+
+// Add CRUD operations for personel
+export async function createPersonel(personelData: Partial<PersonelItem>): Promise<PersonelItem> {
+  try {
+    const { data, error } = await supabase
+      .from("personel")
+      .insert([
+        {
+          nama: personelData.nama,
+          email: personelData.email,
+          kontak: personelData.kontak,
+          jabatan_id: personelData.jabatan_id,
+          pihak: personelData.pihak,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return data as PersonelItem
+  } catch (error) {
+    console.error("Error creating personel:", error)
+    throw error
+  }
+}
+
+export async function updatePersonel(id: number, personelData: Partial<PersonelItem>): Promise<PersonelItem> {
+  try {
+    const { data, error } = await supabase
+      .from("personel")
+      .update({
+        nama: personelData.nama,
+        email: personelData.email,
+        kontak: personelData.kontak,
+        jabatan_id: personelData.jabatan_id,
+        pihak: personelData.pihak,
+      })
+      .eq("personel_id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return data as PersonelItem
+  } catch (error) {
+    console.error("Error updating personel:", error)
+    throw error
+  }
+}
+
+export async function deletePersonel(id: number): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("personel").delete().eq("personel_id", id)
+
+    if (error) throw error
+
+    return true
+  } catch (error) {
+    console.error("Error deleting personel:", error)
+    throw error
+  }
+}
+
+// Add CRUD operations for jabatan
+export async function createJabatan(jabatanData: Partial<JabatanItem>): Promise<JabatanItem> {
+  try {
+    const { data, error } = await supabase
+      .from("jabatan")
+      .insert([
+        {
+          nama_jabatan: jabatanData.nama_jabatan,
+          pihak: jabatanData.pihak,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return data as JabatanItem
+  } catch (error) {
+    console.error("Error creating jabatan:", error)
+    throw error
+  }
+}
+
+// Add quick create functions for reference tables
+export async function createNegara(namaNegaraData: string): Promise<NegaraItem> {
+  try {
+    const { data, error } = await supabase
+      .from("negara")
+      .insert([{ nama_negara: namaNegaraData }])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return data as NegaraItem
+  } catch (error) {
+    console.error("Error creating negara:", error)
+    throw error
+  }
+}
+
+export async function createJenisDokumen(namaJenisData: string): Promise<JenisDokumenItem> {
+  try {
+    const { data, error } = await supabase
+      .from("jenis_dokumen")
+      .insert([{ nama_jenis: namaJenisData }])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return data as JenisDokumenItem
+  } catch (error) {
+    console.error("Error creating jenis dokumen:", error)
     throw error
   }
 }
