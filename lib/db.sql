@@ -63,6 +63,19 @@ update on personel for EACH row
 execute FUNCTION update_modified_column ();
 
 
+create table public.jabatan (
+  jabatan_id serial not null,
+  nama_jabatan character varying(255) not null,
+  pihak public.pihak not null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint jabatan_pkey primary key (jabatan_id)
+) TABLESPACE pg_default;
+
+create trigger update_jabatan_modtime BEFORE
+update on jabatan for EACH row
+execute FUNCTION update_modified_column ();
+
 create view public.v_statistik_negara as
 select
   n.nama_negara,
