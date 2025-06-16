@@ -20,21 +20,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-// Define TypeScript interfaces
+// Define TypeScript interfaces based on database schema
 interface KerjasamaItem {
-  id?: number
-  judul_kerjasama?: string
-  nama_mitra?: string
-  jenis_dokumen?: string
-  status?: string
-  tanggal_mulai?: string
-  tanggal_berakhir?: string
+  kerjasama_id: number
+  judul_kerjasama: string
+  nama_mitra: string
+  nama_negara: string
+  jenis_dokumen: string
+  bidang_kerjasama?: string
+  tanggal_mulai: string
+  tanggal_berakhir: string
+  status: string
+  pelaksana?: string
   [key: string]: any
 }
 
 interface MitraItem {
-  id?: number
-  nama_mitra?: string
+  mitra_id: number
+  nama_mitra: string
+  nama_negara: string
+  alamat: string
+  jenis_partner_nama: string
   [key: string]: any
 }
 
@@ -95,8 +101,6 @@ export default function AdminDashboardPage() {
         const allDates = [
           ...data.kerjasamaData.map((item) => item.tanggal_mulai).filter(Boolean),
           ...data.kerjasamaData.map((item) => item.tanggal_berakhir).filter(Boolean),
-          ...data.mitraData.map((item) => item.tanggal_mulai).filter(Boolean),
-          ...data.mitraData.map((item) => item.tanggal_berakhir).filter(Boolean),
         ]
 
         const years = extractYearsFromDates(allDates)
@@ -137,7 +141,9 @@ export default function AdminDashboardPage() {
   const filteredKerjasama = kerjasamaData.filter((item) => {
     const matchesSearch =
       (item.judul_kerjasama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.nama_mitra?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (item.nama_mitra?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (item.bidang_kerjasama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (item.pelaksana?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === "all" || item.status === filterStatus
     const matchesYearRange = isCooperationPeriodInYearRange(
       item.tanggal_mulai,
@@ -149,13 +155,7 @@ export default function AdminDashboardPage() {
   })
 
   const filteredMitra = mitraData.filter((item) => {
-    const matchesYearRange = isCooperationPeriodInYearRange(
-      item.tanggal_mulai,
-      item.tanggal_berakhir,
-      filterYearFrom,
-      filterYearTo,
-    )
-    return matchesYearRange
+    return true // No date filtering for mitra in dashboard view
   })
 
   // Kalkulasi untuk pagination
@@ -372,8 +372,9 @@ export default function AdminDashboardPage() {
                       <SelectContent>
                         <SelectItem value="all">Semua Status</SelectItem>
                         <SelectItem value="Aktif">Aktif</SelectItem>
-                        <SelectItem value="dalam_proses">Dalam Proses</SelectItem>
-                        <SelectItem value="NULL">Tidak Diketahui</SelectItem>
+                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Berakhir">Berakhir</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -393,6 +394,7 @@ export default function AdminDashboardPage() {
                               <TableHead>Mitra</TableHead>
                               <TableHead>Negara</TableHead>
                               <TableHead>Jenis Dokumen</TableHead>
+                              <TableHead>Bidang</TableHead>
                               <TableHead>Tanggal Mulai</TableHead>
                               <TableHead>Tanggal Berakhir</TableHead>
                               <TableHead>Status</TableHead>
@@ -402,10 +404,13 @@ export default function AdminDashboardPage() {
                             {kerjasamapagination.length > 0 ? (
                               kerjasamapagination.map((item) => (
                                 <TableRow key={item.kerjasama_id}>
-                                  <TableCell className="font-medium">{item.judul_kerjasama}</TableCell>
+                                  <TableCell className="font-medium max-w-xs truncate">
+                                    {item.judul_kerjasama}
+                                  </TableCell>
                                   <TableCell>{item.nama_mitra}</TableCell>
                                   <TableCell>{item.nama_negara}</TableCell>
                                   <TableCell>{item.jenis_dokumen}</TableCell>
+                                  <TableCell className="max-w-xs truncate">{item.bidang_kerjasama}</TableCell>
                                   <TableCell>{formatDate(item.tanggal_mulai)}</TableCell>
                                   <TableCell>{formatDate(item.tanggal_berakhir)}</TableCell>
                                   <TableCell>
@@ -413,23 +418,21 @@ export default function AdminDashboardPage() {
                                       className={`px-2 py-1 rounded-full text-xs font-medium ${
                                         item.status === "Aktif"
                                           ? "bg-green-100 text-green-800"
-                                          : item.status === "dalam_proses"
+                                          : item.status === "Draft"
                                             ? "bg-yellow-100 text-yellow-800"
-                                            : "bg-red-100 text-red-800"
+                                            : item.status === "Berakhir"
+                                              ? "bg-gray-100 text-gray-800"
+                                              : "bg-red-100 text-red-800"
                                       }`}
                                     >
-                                      {item.status === "Aktif"
-                                        ? "Aktif"
-                                        : item.status === "dalam_proses"
-                                          ? "Dalam Proses"
-                                          : "Kedaluwarsa"}
+                                      {item.status}
                                     </span>
                                   </TableCell>
                                 </TableRow>
                               ))
                             ) : (
                               <TableRow>
-                                <TableCell colSpan={7} className="text-center py-4">
+                                <TableCell colSpan={8} className="text-center py-4">
                                   Tidak ada data yang sesuai dengan filter
                                 </TableCell>
                               </TableRow>
@@ -487,12 +490,7 @@ export default function AdminDashboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Daftar Mitra</CardTitle>
-                  <CardDescription>
-                    Daftar semua Mitra yang terdaftar dalam sistem
-                    {(filterYearFrom !== "all" || filterYearTo !== "all") && (
-                      <span className="text-blue-600 ml-2">({getYearRangeDescription()})</span>
-                    )}
-                  </CardDescription>
+                  <CardDescription>Daftar semua Mitra yang terdaftar dalam sistem</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -507,21 +505,23 @@ export default function AdminDashboardPage() {
                             <TableRow>
                               <TableHead>Nama</TableHead>
                               <TableHead>Negara</TableHead>
+                              <TableHead>Jenis Partner</TableHead>
                               <TableHead>Alamat</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {mitrapagination.length > 0 ? (
                               mitrapagination.map((mitra) => (
-                                <TableRow key={mitra.id}>
+                                <TableRow key={mitra.mitra_id}>
                                   <TableCell className="font-medium">{mitra.nama_mitra}</TableCell>
                                   <TableCell>{mitra.nama_negara}</TableCell>
-                                  <TableCell>{mitra.alamat}</TableCell>
+                                  <TableCell>{mitra.jenis_partner_nama}</TableCell>
+                                  <TableCell className="max-w-xs truncate">{mitra.alamat}</TableCell>
                                 </TableRow>
                               ))
                             ) : (
                               <TableRow>
-                                <TableCell colSpan={3} className="text-center py-4">
+                                <TableCell colSpan={4} className="text-center py-4">
                                   Tidak ada data mitra yang sesuai dengan filter
                                 </TableCell>
                               </TableRow>

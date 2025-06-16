@@ -38,6 +38,10 @@ import { Badge } from "@/components/ui/badge"
 import {
   fetchKerjasamaData,
   fetchMitraData,
+  fetchUsers,
+  fetchNegara,
+  fetchJenisPartner,
+  fetchJenisDokumen,
   createMitra,
   updateMitra,
   deleteMitra,
@@ -53,20 +57,15 @@ import {
   exportToCSV,
 } from "@/lib/dataService"
 
-// Define TypeScript interfaces
+// Define TypeScript interfaces based on database schema
 interface MitraData {
-  id: number
+  mitra_id: number
   nama_mitra: string
-  kategori: string
   nama_negara: string
   alamat: string
-  tanggal_mulai: string
-  tanggal_berakhir: string
-  status: string
-  pic_nama?: string
-  pic_kontak?: string
-  pic_email?: string
-  deskripsi?: string
+  jenis_partner_nama: string
+  negara_id?: number
+  jenis_partner_id?: number
 }
 
 interface KerjasamaData {
@@ -75,14 +74,13 @@ interface KerjasamaData {
   nama_mitra: string
   nama_negara: string
   jenis_dokumen: string
+  bidang_kerjasama?: string
   tanggal_mulai: string
   tanggal_berakhir: string
   status: string
-  deskripsi?: string
-  file_path?: string
-  bidang_kerjasama?: string
-  nilai_kontrak?: number
-  mata_uang?: string
+  pelaksana?: string
+  mitra_id?: number
+  jenis_dok_id?: number
 }
 
 interface UserData {
@@ -90,21 +88,34 @@ interface UserData {
   name: string
   email: string
   username: string
-  role: string
+  password?: string
+  profile_picture?: string
   is_active: boolean
-  created_at?: string
-  last_login?: string
-  phone?: string
-  department?: string
+  created_at: string
+  updated_at: string
+}
+
+interface NegaraData {
+  negara_id: number
+  nama_negara: string
+}
+
+interface JenisPartnerData {
+  jenis_partner_id: number
+  nama_jenis: string
+}
+
+interface JenisDokumenData {
+  jenis_dok_id: number
+  nama_jenis: string
 }
 
 export default function DataCentralPage() {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
-  const [filterKategori, setFilterKategori] = useState("all")
+  const [filterJenisPartner, setFilterJenisPartner] = useState("all")
   const [filterNegara, setFilterNegara] = useState("all")
-  const [filterRole, setFilterRole] = useState("all")
   const [filterJenisDokumen, setFilterJenisDokumen] = useState("all")
 
   // Year range filters
@@ -115,6 +126,9 @@ export default function DataCentralPage() {
   const [mitraData, setMitraData] = useState<MitraData[]>([])
   const [kerjasamaData, setKerjasamaData] = useState<KerjasamaData[]>([])
   const [userData, setUserData] = useState<UserData[]>([])
+  const [negaraData, setNegaraData] = useState<NegaraData[]>([])
+  const [jenisPartnerData, setJenisPartnerData] = useState<JenisPartnerData[]>([])
+  const [jenisDokumenData, setJenisDokumenData] = useState<JenisDokumenData[]>([])
   const [loading, setLoading] = useState(true)
 
   // Dialog states for Mitra
@@ -141,40 +155,29 @@ export default function DataCentralPage() {
   // Form states
   const [newMitra, setNewMitra] = useState<Partial<MitraData>>({
     nama_mitra: "",
-    kategori: "",
-    nama_negara: "",
     alamat: "",
-    tanggal_mulai: "",
-    tanggal_berakhir: "",
-    status: "Aktif",
-    pic_nama: "",
-    pic_kontak: "",
-    pic_email: "",
-    deskripsi: "",
+    negara_id: undefined,
+    jenis_partner_id: undefined,
   })
 
   const [newKerjasama, setNewKerjasama] = useState<Partial<KerjasamaData>>({
     judul_kerjasama: "",
-    nama_mitra: "",
-    nama_negara: "",
-    jenis_dokumen: "",
+    mitra_id: undefined,
+    jenis_dok_id: undefined,
+    bidang_kerjasama: "",
     tanggal_mulai: "",
     tanggal_berakhir: "",
     status: "Aktif",
-    deskripsi: "",
-    bidang_kerjasama: "",
-    nilai_kontrak: 0,
-    mata_uang: "IDR",
+    pelaksana: "",
   })
 
   const [newUser, setNewUser] = useState<Partial<UserData>>({
     name: "",
     email: "",
     username: "",
-    role: "guest",
+    password: "",
     is_active: true,
-    phone: "",
-    department: "",
+    profile_picture: "",
   })
 
   // Pagination
@@ -182,7 +185,7 @@ export default function DataCentralPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
   // Unique values for filters
-  const [uniqueKategori, setUniqueKategori] = useState<string[]>([])
+  const [uniqueJenisPartner, setUniqueJenisPartner] = useState<string[]>([])
   const [uniqueNegara, setUniqueNegara] = useState<string[]>([])
   const [uniqueJenisDokumen, setUniqueJenisDokumen] = useState<string[]>([])
   const [availableYears, setAvailableYears] = useState<number[]>([])
@@ -192,86 +195,50 @@ export default function DataCentralPage() {
     const loadData = async () => {
       setLoading(true)
       try {
-        const mitraResponse = await fetchMitraData()
-        const kerjasamaResponse = await fetchKerjasamaData()
+        const [
+          mitraResponse,
+          kerjasamaResponse,
+          userResponse,
+          negaraResponse,
+          jenisPartnerResponse,
+          jenisDokumenResponse,
+        ] = await Promise.all([
+          fetchMitraData(),
+          fetchKerjasamaData(),
+          fetchUsers(),
+          fetchNegara(),
+          fetchJenisPartner(),
+          fetchJenisDokumen(),
+        ])
 
         setMitraData(mitraResponse as MitraData[])
         setKerjasamaData(kerjasamaResponse as KerjasamaData[])
+        setUserData(userResponse as UserData[])
+        setNegaraData(negaraResponse)
+        setJenisPartnerData(jenisPartnerResponse)
+        setJenisDokumenData(jenisDokumenResponse)
 
         // Extract unique values for filters
-        const kategoriSet = new Set(mitraResponse.map((item) => item.kategori).filter(Boolean))
+        const jenisPartnerSet = new Set(mitraResponse.map((item) => item.jenis_partner_nama).filter(Boolean))
         const negaraSet = new Set([
           ...mitraResponse.map((item) => item.nama_negara).filter(Boolean),
           ...kerjasamaResponse.map((item) => item.nama_negara).filter(Boolean),
         ])
         const jenisDokumenSet = new Set(kerjasamaResponse.map((item) => item.jenis_dokumen).filter(Boolean))
 
-        setUniqueKategori(Array.from(kategoriSet) as string[])
-        setUniqueNegara(Array.from(negaraSet) as string[])
-        setUniqueJenisDokumen(Array.from(jenisDokumenSet) as string[])
+        setUniqueJenisPartner(Array.from(jenisPartnerSet))
+        setUniqueNegara(Array.from(negaraSet))
+        setUniqueJenisDokumen(Array.from(jenisDokumenSet))
 
-        // Extract years from dates using the utility function
+        // Extract years from dates
         const allDates = [
-          ...mitraResponse.map((item) => item.tanggal_mulai).filter(Boolean),
-          ...mitraResponse.map((item) => item.tanggal_berakhir).filter(Boolean),
           ...kerjasamaResponse.map((item) => item.tanggal_mulai).filter(Boolean),
           ...kerjasamaResponse.map((item) => item.tanggal_berakhir).filter(Boolean),
+          ...userResponse.map((item) => item.created_at).filter(Boolean),
         ]
 
         const years = extractYearsFromDates(allDates)
         setAvailableYears(years)
-
-        // Simulate user data
-        setUserData([
-          {
-            id: "1",
-            name: "Admin User",
-            email: "admin@example.com",
-            username: "admin",
-            role: "admin",
-            is_active: true,
-            created_at: "2023-01-15",
-            last_login: "2024-01-15",
-            phone: "+62812345678",
-            department: "IT",
-          },
-          {
-            id: "2",
-            name: "Staff User",
-            email: "staff@example.com",
-            username: "staff",
-            role: "staff",
-            is_active: true,
-            created_at: "2023-02-20",
-            last_login: "2024-01-14",
-            phone: "+62812345679",
-            department: "Kerjasama",
-          },
-          {
-            id: "3",
-            name: "Guest User",
-            email: "guest@example.com",
-            username: "guest",
-            role: "guest",
-            is_active: true,
-            created_at: "2023-03-10",
-            last_login: "2024-01-13",
-            phone: "+62812345680",
-            department: "Umum",
-          },
-          {
-            id: "4",
-            name: "Inactive User",
-            email: "inactive@example.com",
-            username: "inactive",
-            role: "guest",
-            is_active: false,
-            created_at: "2023-04-05",
-            last_login: "2023-12-01",
-            phone: "+62812345681",
-            department: "Umum",
-          },
-        ])
       } catch (error) {
         console.error("Error loading data:", error)
         toast({
@@ -291,20 +258,12 @@ export default function DataCentralPage() {
   const filteredMitra = mitraData.filter((item) => {
     const matchesSearch =
       (item.nama_mitra?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.alamat?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.pic_nama?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (item.alamat?.toLowerCase() || "").includes(searchTerm.toLowerCase())
 
-    const matchesStatus = filterStatus === "all" || item.status === filterStatus
-    const matchesKategori = filterKategori === "all" || item.kategori === filterKategori
+    const matchesJenisPartner = filterJenisPartner === "all" || item.jenis_partner_nama === filterJenisPartner
     const matchesNegara = filterNegara === "all" || item.nama_negara === filterNegara
-    const matchesYearRange = isCooperationPeriodInYearRange(
-      item.tanggal_mulai,
-      item.tanggal_berakhir,
-      filterYearFrom,
-      filterYearTo,
-    )
 
-    return matchesSearch && matchesStatus && matchesKategori && matchesNegara && matchesYearRange
+    return matchesSearch && matchesJenisPartner && matchesNegara
   })
 
   // Filter kerjasama data
@@ -312,7 +271,8 @@ export default function DataCentralPage() {
     const matchesSearch =
       (item.judul_kerjasama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (item.nama_mitra?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.bidang_kerjasama?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (item.bidang_kerjasama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (item.pelaksana?.toLowerCase() || "").includes(searchTerm.toLowerCase())
 
     const matchesStatus = filterStatus === "all" || item.status === filterStatus
     const matchesNegara = filterNegara === "all" || item.nama_negara === filterNegara
@@ -332,13 +292,11 @@ export default function DataCentralPage() {
     const matchesSearch =
       (item.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (item.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.username?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (item.department?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (item.username?.toLowerCase() || "").includes(searchTerm.toLowerCase())
 
-    const matchesRole = filterRole === "all" || item.role === filterRole
     const matchesYearRange = isSingleDateInYearRange(item.created_at, filterYearFrom, filterYearTo)
 
-    return matchesSearch && matchesRole && matchesYearRange
+    return matchesSearch && matchesYearRange
   })
 
   // Pagination calculations
@@ -355,16 +313,7 @@ export default function DataCentralPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [
-    searchTerm,
-    filterStatus,
-    filterKategori,
-    filterNegara,
-    filterRole,
-    filterJenisDokumen,
-    filterYearFrom,
-    filterYearTo,
-  ])
+  }, [searchTerm, filterStatus, filterJenisPartner, filterNegara, filterJenisDokumen, filterYearFrom, filterYearTo])
 
   // Handle form input changes
   const handleInputChange = (
@@ -384,9 +333,9 @@ export default function DataCentralPage() {
   // Handle select changes
   const handleSelectChange = (name: string, value: string, formType: "mitra" | "kerjasama" | "user") => {
     if (formType === "mitra") {
-      setNewMitra((prev) => ({ ...prev, [name]: value }))
+      setNewMitra((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
     } else if (formType === "kerjasama") {
-      setNewKerjasama((prev) => ({ ...prev, [name]: value }))
+      setNewKerjasama((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
     } else if (formType === "user") {
       setNewUser((prev) => ({ ...prev, [name]: value === "true" ? true : value === "false" ? false : value }))
     }
@@ -396,7 +345,9 @@ export default function DataCentralPage() {
   const handleAddMitra = async () => {
     try {
       const createdMitra = await createMitra(newMitra)
-      setMitraData((prev) => [...prev, createdMitra as MitraData])
+      // Reload data to get updated view
+      const mitraResponse = await fetchMitraData()
+      setMitraData(mitraResponse as MitraData[])
       setIsAddMitraOpen(false)
       resetMitraForm()
 
@@ -417,8 +368,10 @@ export default function DataCentralPage() {
     if (!selectedMitra) return
 
     try {
-      await updateMitra(selectedMitra.id, newMitra)
-      setMitraData((prev) => prev.map((item) => (item.id === selectedMitra.id ? { ...item, ...newMitra } : item)))
+      await updateMitra(selectedMitra.mitra_id, newMitra)
+      // Reload data to get updated view
+      const mitraResponse = await fetchMitraData()
+      setMitraData(mitraResponse as MitraData[])
       setIsEditMitraOpen(false)
       setSelectedMitra(null)
 
@@ -439,8 +392,8 @@ export default function DataCentralPage() {
     if (!selectedMitra) return
 
     try {
-      await deleteMitra(selectedMitra.id)
-      setMitraData((prev) => prev.filter((item) => item.id !== selectedMitra.id))
+      await deleteMitra(selectedMitra.mitra_id)
+      setMitraData((prev) => prev.filter((item) => item.mitra_id !== selectedMitra.mitra_id))
       setIsDeleteMitraOpen(false)
       setSelectedMitra(null)
 
@@ -461,7 +414,9 @@ export default function DataCentralPage() {
   const handleAddKerjasama = async () => {
     try {
       const createdKerjasama = await createKerjasama(newKerjasama)
-      setKerjasamaData((prev) => [...prev, createdKerjasama as KerjasamaData])
+      // Reload data to get updated view
+      const kerjasamaResponse = await fetchKerjasamaData()
+      setKerjasamaData(kerjasamaResponse as KerjasamaData[])
       setIsAddKerjasamaOpen(false)
       resetKerjasamaForm()
 
@@ -483,11 +438,9 @@ export default function DataCentralPage() {
 
     try {
       await updateKerjasama(selectedKerjasama.kerjasama_id, newKerjasama)
-      setKerjasamaData((prev) =>
-        prev.map((item) =>
-          item.kerjasama_id === selectedKerjasama.kerjasama_id ? { ...item, ...newKerjasama } : item,
-        ),
-      )
+      // Reload data to get updated view
+      const kerjasamaResponse = await fetchKerjasamaData()
+      setKerjasamaData(kerjasamaResponse as KerjasamaData[])
       setIsEditKerjasamaOpen(false)
       setSelectedKerjasama(null)
 
@@ -595,32 +548,22 @@ export default function DataCentralPage() {
   const resetMitraForm = () => {
     setNewMitra({
       nama_mitra: "",
-      kategori: "",
-      nama_negara: "",
       alamat: "",
-      tanggal_mulai: "",
-      tanggal_berakhir: "",
-      status: "Aktif",
-      pic_nama: "",
-      pic_kontak: "",
-      pic_email: "",
-      deskripsi: "",
+      negara_id: undefined,
+      jenis_partner_id: undefined,
     })
   }
 
   const resetKerjasamaForm = () => {
     setNewKerjasama({
       judul_kerjasama: "",
-      nama_mitra: "",
-      nama_negara: "",
-      jenis_dokumen: "",
+      mitra_id: undefined,
+      jenis_dok_id: undefined,
+      bidang_kerjasama: "",
       tanggal_mulai: "",
       tanggal_berakhir: "",
       status: "Aktif",
-      deskripsi: "",
-      bidang_kerjasama: "",
-      nilai_kontrak: 0,
-      mata_uang: "IDR",
+      pelaksana: "",
     })
   }
 
@@ -629,10 +572,9 @@ export default function DataCentralPage() {
       name: "",
       email: "",
       username: "",
-      role: "guest",
+      password: "",
       is_active: true,
-      phone: "",
-      department: "",
+      profile_picture: "",
     })
   }
 
@@ -652,15 +594,6 @@ export default function DataCentralPage() {
     if (!dateString) return "-"
     const date = new Date(dateString)
     return date.toLocaleDateString("id-ID")
-  }
-
-  // Format currency
-  const formatCurrency = (amount?: number, currency?: string) => {
-    if (!amount) return "-"
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: currency || "IDR",
-    }).format(amount)
   }
 
   // Get year range description
@@ -748,71 +681,42 @@ export default function DataCentralPage() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="kategori">Kategori</Label>
+                          <Label htmlFor="negara_id">Negara</Label>
                           <Select
-                            name="kategori"
-                            value={newMitra.kategori || ""}
-                            onValueChange={(value) => handleSelectChange("kategori", value, "mitra")}
+                            name="negara_id"
+                            value={newMitra.negara_id?.toString() || ""}
+                            onValueChange={(value) => handleSelectChange("negara_id", value, "mitra")}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Pilih kategori" />
+                              <SelectValue placeholder="Pilih negara" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Pendidikan">Pendidikan</SelectItem>
-                              <SelectItem value="Teknologi">Teknologi</SelectItem>
-                              <SelectItem value="Kesehatan">Kesehatan</SelectItem>
-                              <SelectItem value="Keuangan">Keuangan</SelectItem>
-                              <SelectItem value="Pemerintah">Pemerintah</SelectItem>
-                              <SelectItem value="Sosial">Sosial</SelectItem>
-                              <SelectItem value="Lainnya">Lainnya</SelectItem>
+                              {negaraData.map((negara) => (
+                                <SelectItem key={negara.negara_id} value={negara.negara_id.toString()}>
+                                  {negara.nama_negara}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="nama_negara">Negara</Label>
-                          <Input
-                            id="nama_negara"
-                            name="nama_negara"
-                            value={newMitra.nama_negara || ""}
-                            onChange={(e) => handleInputChange(e, "mitra")}
-                            placeholder="Masukkan negara"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="status">Status</Label>
+                          <Label htmlFor="jenis_partner_id">Jenis Partner</Label>
                           <Select
-                            name="status"
-                            value={newMitra.status || "Aktif"}
-                            onValueChange={(value) => handleSelectChange("status", value, "mitra")}
+                            name="jenis_partner_id"
+                            value={newMitra.jenis_partner_id?.toString() || ""}
+                            onValueChange={(value) => handleSelectChange("jenis_partner_id", value, "mitra")}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Pilih status" />
+                              <SelectValue placeholder="Pilih jenis partner" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Aktif">Aktif</SelectItem>
-                              <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                              {jenisPartnerData.map((jenis) => (
+                                <SelectItem key={jenis.jenis_partner_id} value={jenis.jenis_partner_id.toString()}>
+                                  {jenis.nama_jenis}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="tanggal_mulai">Tanggal Mulai</Label>
-                          <Input
-                            id="tanggal_mulai"
-                            name="tanggal_mulai"
-                            type="date"
-                            value={newMitra.tanggal_mulai || ""}
-                            onChange={(e) => handleInputChange(e, "mitra")}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="tanggal_berakhir">Tanggal Berakhir</Label>
-                          <Input
-                            id="tanggal_berakhir"
-                            name="tanggal_berakhir"
-                            type="date"
-                            value={newMitra.tanggal_berakhir || ""}
-                            onChange={(e) => handleInputChange(e, "mitra")}
-                          />
                         </div>
                         <div className="grid gap-2 md:col-span-2">
                           <Label htmlFor="alamat">Alamat</Label>
@@ -822,47 +726,6 @@ export default function DataCentralPage() {
                             value={newMitra.alamat || ""}
                             onChange={(e) => handleInputChange(e, "mitra")}
                             placeholder="Masukkan alamat lengkap"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="pic_nama">Nama PIC</Label>
-                          <Input
-                            id="pic_nama"
-                            name="pic_nama"
-                            value={newMitra.pic_nama || ""}
-                            onChange={(e) => handleInputChange(e, "mitra")}
-                            placeholder="Masukkan nama PIC"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="pic_kontak">Kontak PIC</Label>
-                          <Input
-                            id="pic_kontak"
-                            name="pic_kontak"
-                            value={newMitra.pic_kontak || ""}
-                            onChange={(e) => handleInputChange(e, "mitra")}
-                            placeholder="Masukkan kontak PIC"
-                          />
-                        </div>
-                        <div className="grid gap-2 md:col-span-2">
-                          <Label htmlFor="pic_email">Email PIC</Label>
-                          <Input
-                            id="pic_email"
-                            name="pic_email"
-                            type="email"
-                            value={newMitra.pic_email || ""}
-                            onChange={(e) => handleInputChange(e, "mitra")}
-                            placeholder="Masukkan email PIC"
-                          />
-                        </div>
-                        <div className="grid gap-2 md:col-span-2">
-                          <Label htmlFor="deskripsi">Deskripsi</Label>
-                          <Textarea
-                            id="deskripsi"
-                            name="deskripsi"
-                            value={newMitra.deskripsi || ""}
-                            onChange={(e) => handleInputChange(e, "mitra")}
-                            placeholder="Masukkan deskripsi mitra"
                           />
                         </div>
                       </div>
@@ -891,26 +754,15 @@ export default function DataCentralPage() {
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <Select value={filterJenisPartner} onValueChange={setFilterJenisPartner}>
                       <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Filter Status" />
+                        <SelectValue placeholder="Filter Jenis" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Semua Status</SelectItem>
-                        <SelectItem value="Aktif">Aktif</SelectItem>
-                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={filterKategori} onValueChange={setFilterKategori}>
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Filter Kategori" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Semua Kategori</SelectItem>
-                        {uniqueKategori.map((kategori) => (
-                          <SelectItem key={kategori} value={kategori}>
-                            {kategori}
+                        <SelectItem value="all">Semua Jenis</SelectItem>
+                        {uniqueJenisPartner.map((jenis) => (
+                          <SelectItem key={jenis} value={jenis}>
+                            {jenis}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -930,36 +782,6 @@ export default function DataCentralPage() {
                       </SelectContent>
                     </Select>
 
-                    <div className="flex items-center gap-1">
-                      <Select value={filterYearFrom} onValueChange={setFilterYearFrom}>
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue placeholder="Dari Tahun" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Semua</SelectItem>
-                          {availableYears.map((year) => (
-                            <SelectItem key={year} value={year.toString()}>
-                              {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-gray-500 px-1">s/d</span>
-                      <Select value={filterYearTo} onValueChange={setFilterYearTo}>
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue placeholder="Sampai Tahun" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Semua</SelectItem>
-                          {availableYears.map((year) => (
-                            <SelectItem key={year} value={year.toString()}>
-                              {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
                     <Button
                       variant="outline"
                       onClick={() => handleExportToCSV(filteredMitra, "mitra_data")}
@@ -976,18 +798,16 @@ export default function DataCentralPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nama Mitra</TableHead>
-                        <TableHead>Kategori</TableHead>
                         <TableHead>Negara</TableHead>
-                        <TableHead>Tanggal Mulai</TableHead>
-                        <TableHead>Tanggal Berakhir</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Jenis Partner</TableHead>
+                        <TableHead>Alamat</TableHead>
                         <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10">
+                          <TableCell colSpan={5} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
                               <span className="mt-2">Loading...</span>
@@ -996,21 +816,11 @@ export default function DataCentralPage() {
                         </TableRow>
                       ) : currentMitra.length > 0 ? (
                         currentMitra.map((item) => (
-                          <TableRow key={item.id}>
+                          <TableRow key={item.mitra_id}>
                             <TableCell className="font-medium">{item.nama_mitra}</TableCell>
-                            <TableCell>{item.kategori}</TableCell>
                             <TableCell>{item.nama_negara}</TableCell>
-                            <TableCell>{formatDate(item.tanggal_mulai)}</TableCell>
-                            <TableCell>{formatDate(item.tanggal_berakhir)}</TableCell>
-                            <TableCell>
-                              <Badge
-                                className={`${
-                                  item.status === "Aktif" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {item.status}
-                              </Badge>
-                            </TableCell>
+                            <TableCell>{item.jenis_partner_nama}</TableCell>
+                            <TableCell className="max-w-xs truncate">{item.alamat}</TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -1031,7 +841,12 @@ export default function DataCentralPage() {
                                   <DropdownMenuItem
                                     onClick={() => {
                                       setSelectedMitra(item)
-                                      setNewMitra(item)
+                                      setNewMitra({
+                                        nama_mitra: item.nama_mitra,
+                                        alamat: item.alamat,
+                                        negara_id: item.negara_id,
+                                        jenis_partner_id: item.jenis_partner_id,
+                                      })
                                       setIsEditMitraOpen(true)
                                     }}
                                   >
@@ -1055,7 +870,7 @@ export default function DataCentralPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10">
+                          <TableCell colSpan={5} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <AlertCircle className="h-8 w-8 text-gray-400" />
                               <span className="mt-2">Tidak ada data yang ditemukan</span>
@@ -1137,50 +952,16 @@ export default function DataCentralPage() {
                       <p className="mt-1">{selectedMitra.nama_mitra}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Kategori</h3>
-                      <p className="mt-1">{selectedMitra.kategori}</p>
-                    </div>
-                    <div>
                       <h3 className="text-sm font-medium text-gray-500">Negara</h3>
                       <p className="mt-1">{selectedMitra.nama_negara}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                      <Badge
-                        className={`mt-1 ${
-                          selectedMitra.status === "Aktif" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {selectedMitra.status}
-                      </Badge>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Tanggal Mulai</h3>
-                      <p className="mt-1">{formatDate(selectedMitra.tanggal_mulai)}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Tanggal Berakhir</h3>
-                      <p className="mt-1">{formatDate(selectedMitra.tanggal_berakhir)}</p>
+                      <h3 className="text-sm font-medium text-gray-500">Jenis Partner</h3>
+                      <p className="mt-1">{selectedMitra.jenis_partner_nama}</p>
                     </div>
                     <div className="md:col-span-2">
                       <h3 className="text-sm font-medium text-gray-500">Alamat</h3>
                       <p className="mt-1">{selectedMitra.alamat}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Nama PIC</h3>
-                      <p className="mt-1">{selectedMitra.pic_nama || "-"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Kontak PIC</h3>
-                      <p className="mt-1">{selectedMitra.pic_kontak || "-"}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <h3 className="text-sm font-medium text-gray-500">Email PIC</h3>
-                      <p className="mt-1">{selectedMitra.pic_email || "-"}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <h3 className="text-sm font-medium text-gray-500">Deskripsi</h3>
-                      <p className="mt-1">{selectedMitra.deskripsi || "-"}</p>
                     </div>
                   </div>
                 </div>
@@ -1211,71 +992,42 @@ export default function DataCentralPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit_kategori">Kategori</Label>
+                    <Label htmlFor="edit_negara_id">Negara</Label>
                     <Select
-                      name="kategori"
-                      value={newMitra.kategori || ""}
-                      onValueChange={(value) => handleSelectChange("kategori", value, "mitra")}
+                      name="negara_id"
+                      value={newMitra.negara_id?.toString() || ""}
+                      onValueChange={(value) => handleSelectChange("negara_id", value, "mitra")}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih kategori" />
+                        <SelectValue placeholder="Pilih negara" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Pendidikan">Pendidikan</SelectItem>
-                        <SelectItem value="Teknologi">Teknologi</SelectItem>
-                        <SelectItem value="Kesehatan">Kesehatan</SelectItem>
-                        <SelectItem value="Keuangan">Keuangan</SelectItem>
-                        <SelectItem value="Pemerintah">Pemerintah</SelectItem>
-                        <SelectItem value="Sosial">Sosial</SelectItem>
-                        <SelectItem value="Lainnya">Lainnya</SelectItem>
+                        {negaraData.map((negara) => (
+                          <SelectItem key={negara.negara_id} value={negara.negara_id.toString()}>
+                            {negara.nama_negara}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit_nama_negara">Negara</Label>
-                    <Input
-                      id="edit_nama_negara"
-                      name="nama_negara"
-                      value={newMitra.nama_negara || ""}
-                      onChange={(e) => handleInputChange(e, "mitra")}
-                      placeholder="Masukkan negara"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_status">Status</Label>
+                    <Label htmlFor="edit_jenis_partner_id">Jenis Partner</Label>
                     <Select
-                      name="status"
-                      value={newMitra.status || "Aktif"}
-                      onValueChange={(value) => handleSelectChange("status", value, "mitra")}
+                      name="jenis_partner_id"
+                      value={newMitra.jenis_partner_id?.toString() || ""}
+                      onValueChange={(value) => handleSelectChange("jenis_partner_id", value, "mitra")}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih status" />
+                        <SelectValue placeholder="Pilih jenis partner" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Aktif">Aktif</SelectItem>
-                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                        {jenisPartnerData.map((jenis) => (
+                          <SelectItem key={jenis.jenis_partner_id} value={jenis.jenis_partner_id.toString()}>
+                            {jenis.nama_jenis}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_tanggal_mulai">Tanggal Mulai</Label>
-                    <Input
-                      id="edit_tanggal_mulai"
-                      name="tanggal_mulai"
-                      type="date"
-                      value={newMitra.tanggal_mulai || ""}
-                      onChange={(e) => handleInputChange(e, "mitra")}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_tanggal_berakhir">Tanggal Berakhir</Label>
-                    <Input
-                      id="edit_tanggal_berakhir"
-                      name="tanggal_berakhir"
-                      type="date"
-                      value={newMitra.tanggal_berakhir || ""}
-                      onChange={(e) => handleInputChange(e, "mitra")}
-                    />
                   </div>
                   <div className="grid gap-2 md:col-span-2">
                     <Label htmlFor="edit_alamat">Alamat</Label>
@@ -1285,47 +1037,6 @@ export default function DataCentralPage() {
                       value={newMitra.alamat || ""}
                       onChange={(e) => handleInputChange(e, "mitra")}
                       placeholder="Masukkan alamat lengkap"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_pic_nama">Nama PIC</Label>
-                    <Input
-                      id="edit_pic_nama"
-                      name="pic_nama"
-                      value={newMitra.pic_nama || ""}
-                      onChange={(e) => handleInputChange(e, "mitra")}
-                      placeholder="Masukkan nama PIC"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_pic_kontak">Kontak PIC</Label>
-                    <Input
-                      id="edit_pic_kontak"
-                      name="pic_kontak"
-                      value={newMitra.pic_kontak || ""}
-                      onChange={(e) => handleInputChange(e, "mitra")}
-                      placeholder="Masukkan kontak PIC"
-                    />
-                  </div>
-                  <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="edit_pic_email">Email PIC</Label>
-                    <Input
-                      id="edit_pic_email"
-                      name="pic_email"
-                      type="email"
-                      value={newMitra.pic_email || ""}
-                      onChange={(e) => handleInputChange(e, "mitra")}
-                      placeholder="Masukkan email PIC"
-                    />
-                  </div>
-                  <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="edit_deskripsi">Deskripsi</Label>
-                    <Textarea
-                      id="edit_deskripsi"
-                      name="deskripsi"
-                      value={newMitra.deskripsi || ""}
-                      onChange={(e) => handleInputChange(e, "mitra")}
-                      placeholder="Masukkan deskripsi mitra"
                     />
                   </div>
                 </div>
@@ -1356,7 +1067,8 @@ export default function DataCentralPage() {
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
-          </AlertDialog>        </TabsContent>
+          </AlertDialog>
+        </TabsContent>
 
         {/* DATA KERJASAMA TAB */}
         <TabsContent value="kerjasama" className="mt-4">
@@ -1394,41 +1106,40 @@ export default function DataCentralPage() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="nama_mitra_kerjasama">Nama Mitra</Label>
-                          <Input
-                            id="nama_mitra_kerjasama"
-                            name="nama_mitra"
-                            value={newKerjasama.nama_mitra || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                            placeholder="Masukkan nama mitra"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="nama_negara_kerjasama">Negara</Label>
-                          <Input
-                            id="nama_negara_kerjasama"
-                            name="nama_negara"
-                            value={newKerjasama.nama_negara || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                            placeholder="Masukkan negara"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="jenis_dokumen">Jenis Dokumen</Label>
+                          <Label htmlFor="mitra_id">Mitra</Label>
                           <Select
-                            name="jenis_dokumen"
-                            value={newKerjasama.jenis_dokumen || ""}
-                            onValueChange={(value) => handleSelectChange("jenis_dokumen", value, "kerjasama")}
+                            name="mitra_id"
+                            value={newKerjasama.mitra_id?.toString() || ""}
+                            onValueChange={(value) => handleSelectChange("mitra_id", value, "kerjasama")}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih mitra" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {mitraData.map((mitra) => (
+                                <SelectItem key={mitra.mitra_id} value={mitra.mitra_id.toString()}>
+                                  {mitra.nama_mitra}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="jenis_dok_id">Jenis Dokumen</Label>
+                          <Select
+                            name="jenis_dok_id"
+                            value={newKerjasama.jenis_dok_id?.toString() || ""}
+                            onValueChange={(value) => handleSelectChange("jenis_dok_id", value, "kerjasama")}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih jenis dokumen" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="MoU">MoU</SelectItem>
-                              <SelectItem value="MoA">MoA</SelectItem>
-                              <SelectItem value="IA">IA</SelectItem>
-                              <SelectItem value="Contract">Contract</SelectItem>
-                              <SelectItem value="Agreement">Agreement</SelectItem>
+                              {jenisDokumenData.map((jenis) => (
+                                <SelectItem key={jenis.jenis_dok_id} value={jenis.jenis_dok_id.toString()}>
+                                  {jenis.nama_jenis}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1441,6 +1152,34 @@ export default function DataCentralPage() {
                             onChange={(e) => handleInputChange(e, "kerjasama")}
                             placeholder="Masukkan bidang kerjasama"
                           />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="pelaksana">Pelaksana</Label>
+                          <Input
+                            id="pelaksana"
+                            name="pelaksana"
+                            value={newKerjasama.pelaksana || ""}
+                            onChange={(e) => handleInputChange(e, "kerjasama")}
+                            placeholder="Masukkan pelaksana"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="status_kerjasama">Status</Label>
+                          <Select
+                            name="status"
+                            value={newKerjasama.status || "Aktif"}
+                            onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Aktif">Aktif</SelectItem>
+                              <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                              <SelectItem value="Draft">Draft</SelectItem>
+                              <SelectItem value="Berakhir">Berakhir</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor="tanggal_mulai_kerjasama">Tanggal Mulai</Label>
@@ -1460,63 +1199,6 @@ export default function DataCentralPage() {
                             type="date"
                             value={newKerjasama.tanggal_berakhir || ""}
                             onChange={(e) => handleInputChange(e, "kerjasama")}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="nilai_kontrak">Nilai Kontrak</Label>
-                          <Input
-                            id="nilai_kontrak"
-                            name="nilai_kontrak"
-                            type="number"
-                            value={newKerjasama.nilai_kontrak || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                            placeholder="Masukkan nilai kontrak"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="mata_uang">Mata Uang</Label>
-                          <Select
-                            name="mata_uang"
-                            value={newKerjasama.mata_uang || "IDR"}
-                            onValueChange={(value) => handleSelectChange("mata_uang", value, "kerjasama")}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih mata uang" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="IDR">IDR</SelectItem>
-                              <SelectItem value="USD">USD</SelectItem>
-                              <SelectItem value="EUR">EUR</SelectItem>
-                              <SelectItem value="SGD">SGD</SelectItem>
-                              <SelectItem value="MYR">MYR</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="status_kerjasama">Status</Label>
-                          <Select
-                            name="status"
-                            value={newKerjasama.status || "Aktif"}
-                            onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Aktif">Aktif</SelectItem>
-                              <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                              <SelectItem value="Pending">Pending</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2 md:col-span-2">
-                          <Label htmlFor="deskripsi_kerjasama">Deskripsi</Label>
-                          <Textarea
-                            id="deskripsi_kerjasama"
-                            name="deskripsi"
-                            value={newKerjasama.deskripsi || ""}
-                            onChange={(e) => handleInputChange(e, "kerjasama")}
-                            placeholder="Masukkan deskripsi kerjasama"
                           />
                         </div>
                       </div>
@@ -1553,21 +1235,8 @@ export default function DataCentralPage() {
                         <SelectItem value="all">Semua Status</SelectItem>
                         <SelectItem value="Aktif">Aktif</SelectItem>
                         <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={filterJenisDokumen} onValueChange={setFilterJenisDokumen}>
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Filter Dokumen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Semua Dokumen</SelectItem>
-                        {uniqueJenisDokumen.map((jenis) => (
-                          <SelectItem key={jenis} value={jenis}>
-                            {jenis}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Berakhir">Berakhir</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -1580,6 +1249,20 @@ export default function DataCentralPage() {
                         {uniqueNegara.map((negara) => (
                           <SelectItem key={negara} value={negara}>
                             {negara}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={filterJenisDokumen} onValueChange={setFilterJenisDokumen}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Filter Jenis" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Jenis</SelectItem>
+                        {uniqueJenisDokumen.map((jenis) => (
+                          <SelectItem key={jenis} value={jenis}>
+                            {jenis}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1632,7 +1315,9 @@ export default function DataCentralPage() {
                       <TableRow>
                         <TableHead>Judul Kerjasama</TableHead>
                         <TableHead>Mitra</TableHead>
+                        <TableHead>Negara</TableHead>
                         <TableHead>Jenis Dokumen</TableHead>
+                        <TableHead>Bidang</TableHead>
                         <TableHead>Tanggal Mulai</TableHead>
                         <TableHead>Tanggal Berakhir</TableHead>
                         <TableHead>Status</TableHead>
@@ -1642,7 +1327,7 @@ export default function DataCentralPage() {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10">
+                          <TableCell colSpan={9} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
                               <span className="mt-2">Loading...</span>
@@ -1652,19 +1337,23 @@ export default function DataCentralPage() {
                       ) : currentKerjasama.length > 0 ? (
                         currentKerjasama.map((item) => (
                           <TableRow key={item.kerjasama_id}>
-                            <TableCell className="font-medium">{item.judul_kerjasama}</TableCell>
+                            <TableCell className="font-medium max-w-xs truncate">{item.judul_kerjasama}</TableCell>
                             <TableCell>{item.nama_mitra}</TableCell>
+                            <TableCell>{item.nama_negara}</TableCell>
                             <TableCell>{item.jenis_dokumen}</TableCell>
+                            <TableCell className="max-w-xs truncate">{item.bidang_kerjasama}</TableCell>
                             <TableCell>{formatDate(item.tanggal_mulai)}</TableCell>
                             <TableCell>{formatDate(item.tanggal_berakhir)}</TableCell>
                             <TableCell>
                               <Badge
                                 className={`${
-                                  item.status === "Aktif" 
-                                    ? "bg-green-100 text-green-800" 
-                                    : item.status === "Pending"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
+                                  item.status === "Aktif"
+                                    ? "bg-green-100 text-green-800"
+                                    : item.status === "Draft"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : item.status === "Berakhir"
+                                        ? "bg-gray-100 text-gray-800"
+                                        : "bg-red-100 text-red-800"
                                 }`}
                               >
                                 {item.status}
@@ -1690,7 +1379,16 @@ export default function DataCentralPage() {
                                   <DropdownMenuItem
                                     onClick={() => {
                                       setSelectedKerjasama(item)
-                                      setNewKerjasama(item)
+                                      setNewKerjasama({
+                                        judul_kerjasama: item.judul_kerjasama,
+                                        mitra_id: item.mitra_id,
+                                        jenis_dok_id: item.jenis_dok_id,
+                                        bidang_kerjasama: item.bidang_kerjasama,
+                                        tanggal_mulai: item.tanggal_mulai,
+                                        tanggal_berakhir: item.tanggal_berakhir,
+                                        status: item.status,
+                                        pelaksana: item.pelaksana,
+                                      })
                                       setIsEditKerjasamaOpen(true)
                                     }}
                                   >
@@ -1714,7 +1412,7 @@ export default function DataCentralPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10">
+                          <TableCell colSpan={9} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <AlertCircle className="h-8 w-8 text-gray-400" />
                               <span className="mt-2">Tidak ada data yang ditemukan</span>
@@ -1812,34 +1510,32 @@ export default function DataCentralPage() {
                       <p className="mt-1">{selectedKerjasama.bidang_kerjasama || "-"}</p>
                     </div>
                     <div>
+                      <h3 className="text-sm font-medium text-gray-500">Pelaksana</h3>
+                      <p className="mt-1">{selectedKerjasama.pelaksana || "-"}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                      <Badge
+                        className={`mt-1 ${
+                          selectedKerjasama.status === "Aktif"
+                            ? "bg-green-100 text-green-800"
+                            : selectedKerjasama.status === "Draft"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : selectedKerjasama.status === "Berakhir"
+                                ? "bg-gray-100 text-gray-800"
+                                : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {selectedKerjasama.status}
+                      </Badge>
+                    </div>
+                    <div>
                       <h3 className="text-sm font-medium text-gray-500">Tanggal Mulai</h3>
                       <p className="mt-1">{formatDate(selectedKerjasama.tanggal_mulai)}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Tanggal Berakhir</h3>
                       <p className="mt-1">{formatDate(selectedKerjasama.tanggal_berakhir)}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Nilai Kontrak</h3>
-                      <p className="mt-1 font-medium">{formatCurrency(selectedKerjasama.nilai_kontrak, selectedKerjasama.mata_uang)}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                      <Badge
-                        className={`mt-1 ${
-                          selectedKerjasama.status === "Aktif" 
-                            ? "bg-green-100 text-green-800" 
-                            : selectedKerjasama.status === "Pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {selectedKerjasama.status}
-                      </Badge>
-                    </div>
-                    <div className="md:col-span-2">
-                      <h3 className="text-sm font-medium text-gray-500">Deskripsi</h3>
-                      <p className="mt-1">{selectedKerjasama.deskripsi || "-"}</p>
                     </div>
                   </div>
                 </div>
@@ -1870,41 +1566,40 @@ export default function DataCentralPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit_nama_mitra_kerjasama">Nama Mitra</Label>
-                    <Input
-                      id="edit_nama_mitra_kerjasama"
-                      name="nama_mitra"
-                      value={newKerjasama.nama_mitra || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                      placeholder="Masukkan nama mitra"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_nama_negara_kerjasama">Negara</Label>
-                    <Input
-                      id="edit_nama_negara_kerjasama"
-                      name="nama_negara"
-                      value={newKerjasama.nama_negara || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                      placeholder="Masukkan negara"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_jenis_dokumen">Jenis Dokumen</Label>
+                    <Label htmlFor="edit_mitra_id">Mitra</Label>
                     <Select
-                      name="jenis_dokumen"
-                      value={newKerjasama.jenis_dokumen || ""}
-                      onValueChange={(value) => handleSelectChange("jenis_dokumen", value, "kerjasama")}
+                      name="mitra_id"
+                      value={newKerjasama.mitra_id?.toString() || ""}
+                      onValueChange={(value) => handleSelectChange("mitra_id", value, "kerjasama")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih mitra" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mitraData.map((mitra) => (
+                          <SelectItem key={mitra.mitra_id} value={mitra.mitra_id.toString()}>
+                            {mitra.nama_mitra}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit_jenis_dok_id">Jenis Dokumen</Label>
+                    <Select
+                      name="jenis_dok_id"
+                      value={newKerjasama.jenis_dok_id?.toString() || ""}
+                      onValueChange={(value) => handleSelectChange("jenis_dok_id", value, "kerjasama")}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih jenis dokumen" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="MoU">MoU</SelectItem>
-                        <SelectItem value="MoA">MoA</SelectItem>
-                        <SelectItem value="IA">IA</SelectItem>
-                        <SelectItem value="Contract">Contract</SelectItem>
-                        <SelectItem value="Agreement">Agreement</SelectItem>
+                        {jenisDokumenData.map((jenis) => (
+                          <SelectItem key={jenis.jenis_dok_id} value={jenis.jenis_dok_id.toString()}>
+                            {jenis.nama_jenis}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1917,6 +1612,34 @@ export default function DataCentralPage() {
                       onChange={(e) => handleInputChange(e, "kerjasama")}
                       placeholder="Masukkan bidang kerjasama"
                     />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit_pelaksana">Pelaksana</Label>
+                    <Input
+                      id="edit_pelaksana"
+                      name="pelaksana"
+                      value={newKerjasama.pelaksana || ""}
+                      onChange={(e) => handleInputChange(e, "kerjasama")}
+                      placeholder="Masukkan pelaksana"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit_status_kerjasama">Status</Label>
+                    <Select
+                      name="status"
+                      value={newKerjasama.status || "Aktif"}
+                      onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Aktif">Aktif</SelectItem>
+                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Berakhir">Berakhir</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="edit_tanggal_mulai_kerjasama">Tanggal Mulai</Label>
@@ -1938,63 +1661,6 @@ export default function DataCentralPage() {
                       onChange={(e) => handleInputChange(e, "kerjasama")}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_nilai_kontrak">Nilai Kontrak</Label>
-                    <Input
-                      id="edit_nilai_kontrak"
-                      name="nilai_kontrak"
-                      type="number"
-                      value={newKerjasama.nilai_kontrak || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                      placeholder="Masukkan nilai kontrak"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_mata_uang">Mata Uang</Label>
-                    <Select
-                      name="mata_uang"
-                      value={newKerjasama.mata_uang || "IDR"}
-                      onValueChange={(value) => handleSelectChange("mata_uang", value, "kerjasama")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih mata uang" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="IDR">IDR</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="SGD">SGD</SelectItem>
-                        <SelectItem value="MYR">MYR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_status_kerjasama">Status</Label>
-                    <Select
-                      name="status"
-                      value={newKerjasama.status || "Aktif"}
-                      onValueChange={(value) => handleSelectChange("status", value, "kerjasama")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Aktif">Aktif</SelectItem>
-                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="edit_deskripsi_kerjasama">Deskripsi</Label>
-                    <Textarea
-                      id="edit_deskripsi_kerjasama"
-                      name="deskripsi"
-                      value={newKerjasama.deskripsi || ""}
-                      onChange={(e) => handleInputChange(e, "kerjasama")}
-                      placeholder="Masukkan deskripsi kerjasama"
-                    />
-                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -2012,8 +1678,8 @@ export default function DataCentralPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Konfirmasi Hapus</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Apakah Anda yakin ingin menghapus kerjasama "{selectedKerjasama?.judul_kerjasama}"? Tindakan ini tidak dapat
-                  dibatalkan.
+                  Apakah Anda yakin ingin menghapus kerjasama "{selectedKerjasama?.judul_kerjasama}"? Tindakan ini tidak
+                  dapat dibatalkan.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -2082,45 +1748,19 @@ export default function DataCentralPage() {
                             placeholder="Masukkan email"
                           />
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="phone">Nomor Telepon</Label>
+                        <div className="grid gap-2 md:col-span-2">
+                          <Label htmlFor="password">Password</Label>
                           <Input
-                            id="phone"
-                            name="phone"
-                            value={newUser.phone || ""}
+                            id="password"
+                            name="password"
+                            type="password"
+                            value={newUser.password || ""}
                             onChange={(e) => handleInputChange(e, "user")}
-                            placeholder="Masukkan nomor telepon"
+                            placeholder="Masukkan password"
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="department">Departemen</Label>
-                          <Input
-                            id="department"
-                            name="department"
-                            value={newUser.department || ""}
-                            onChange={(e) => handleInputChange(e, "user")}
-                            placeholder="Masukkan departemen"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="role">Role</Label>
-                          <Select
-                            name="role"
-                            value={newUser.role || "guest"}
-                            onValueChange={(value) => handleSelectChange("role", value, "user")}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="staff">Staff</SelectItem>
-                              <SelectItem value="guest">Guest</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="is_active">Status Aktif</Label>
+                          <Label htmlFor="is_active">Status</Label>
                           <Select
                             name="is_active"
                             value={newUser.is_active ? "true" : "false"}
@@ -2134,6 +1774,16 @@ export default function DataCentralPage() {
                               <SelectItem value="false">Tidak Aktif</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="profile_picture">URL Foto Profil</Label>
+                          <Input
+                            id="profile_picture"
+                            name="profile_picture"
+                            value={newUser.profile_picture || ""}
+                            onChange={(e) => handleInputChange(e, "user")}
+                            placeholder="Masukkan URL foto profil"
+                          />
                         </div>
                       </div>
                     </div>
@@ -2161,18 +1811,6 @@ export default function DataCentralPage() {
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Select value={filterRole} onValueChange={setFilterRole}>
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Filter Role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Semua Role</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
-                        <SelectItem value="guest">Guest</SelectItem>
-                      </SelectContent>
-                    </Select>
-
                     <div className="flex items-center gap-1">
                       <Select value={filterYearFrom} onValueChange={setFilterYearFrom}>
                         <SelectTrigger className="w-[120px]">
@@ -2219,10 +1857,9 @@ export default function DataCentralPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nama</TableHead>
-                        <TableHead>Username</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Departemen</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Tanggal Dibuat</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
@@ -2230,7 +1867,7 @@ export default function DataCentralPage() {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10">
+                          <TableCell colSpan={6} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
                               <span className="mt-2">Loading...</span>
@@ -2241,22 +1878,9 @@ export default function DataCentralPage() {
                         currentUsers.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.username}</TableCell>
                             <TableCell>{item.email}</TableCell>
-                            <TableCell>
-                              <Badge
-                                className={`${
-                                  item.role === "admin" 
-                                    ? "bg-purple-100 text-purple-800" 
-                                    : item.role === "staff"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {item.role}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{item.department || "-"}</TableCell>
+                            <TableCell>{item.username}</TableCell>
+                            <TableCell>{formatDate(item.created_at)}</TableCell>
                             <TableCell>
                               <Badge
                                 className={`${
@@ -2286,7 +1910,14 @@ export default function DataCentralPage() {
                                   <DropdownMenuItem
                                     onClick={() => {
                                       setSelectedUser(item)
-                                      setNewUser(item)
+                                      setNewUser({
+                                        name: item.name,
+                                        email: item.email,
+                                        username: item.username,
+                                        is_active: item.is_active,
+                                        profile_picture: item.profile_picture,
+                                        password: "", // Don't pre-fill password
+                                      })
                                       setIsEditUserOpen(true)
                                     }}
                                   >
@@ -2310,7 +1941,7 @@ export default function DataCentralPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10">
+                          <TableCell colSpan={6} className="text-center py-10">
                             <div className="flex flex-col items-center justify-center">
                               <AlertCircle className="h-8 w-8 text-gray-400" />
                               <span className="mt-2">Tidak ada data yang ditemukan</span>
@@ -2400,28 +2031,6 @@ export default function DataCentralPage() {
                       <p className="mt-1">{selectedUser.email}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Nomor Telepon</h3>
-                      <p className="mt-1">{selectedUser.phone || "-"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Departemen</h3>
-                      <p className="mt-1">{selectedUser.department || "-"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Role</h3>
-                      <Badge
-                        className={`mt-1 ${
-                          selectedUser.role === "admin" 
-                            ? "bg-purple-100 text-purple-800" 
-                            : selectedUser.role === "staff"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {selectedUser.role}
-                      </Badge>
-                    </div>
-                    <div>
                       <h3 className="text-sm font-medium text-gray-500">Status</h3>
                       <Badge
                         className={`mt-1 ${
@@ -2436,9 +2045,15 @@ export default function DataCentralPage() {
                       <p className="mt-1">{formatDate(selectedUser.created_at)}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Login Terakhir</h3>
-                      <p className="mt-1">{formatDate(selectedUser.last_login)}</p>
+                      <h3 className="text-sm font-medium text-gray-500">Terakhir Diperbarui</h3>
+                      <p className="mt-1">{formatDate(selectedUser.updated_at)}</p>
                     </div>
+                    {selectedUser.profile_picture && (
+                      <div className="md:col-span-2">
+                        <h3 className="text-sm font-medium text-gray-500">Foto Profil</h3>
+                        <p className="mt-1 text-sm text-blue-600 break-all">{selectedUser.profile_picture}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2488,45 +2103,19 @@ export default function DataCentralPage() {
                       placeholder="Masukkan email"
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_phone">Nomor Telepon</Label>
+                  <div className="grid gap-2 md:col-span-2">
+                    <Label htmlFor="edit_password">Password Baru (kosongkan jika tidak ingin mengubah)</Label>
                     <Input
-                      id="edit_phone"
-                      name="phone"
-                      value={newUser.phone || ""}
+                      id="edit_password"
+                      name="password"
+                      type="password"
+                      value={newUser.password || ""}
                       onChange={(e) => handleInputChange(e, "user")}
-                      placeholder="Masukkan nomor telepon"
+                      placeholder="Masukkan password baru"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit_department">Departemen</Label>
-                    <Input
-                      id="edit_department"
-                      name="department"
-                      value={newUser.department || ""}
-                      onChange={(e) => handleInputChange(e, "user")}
-                      placeholder="Masukkan departemen"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_role">Role</Label>
-                    <Select
-                      name="role"
-                      value={newUser.role || "guest"}
-                      onValueChange={(value) => handleSelectChange("role", value, "user")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
-                        <SelectItem value="guest">Guest</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit_is_active">Status Aktif</Label>
+                    <Label htmlFor="edit_is_active">Status</Label>
                     <Select
                       name="is_active"
                       value={newUser.is_active ? "true" : "false"}
@@ -2540,6 +2129,16 @@ export default function DataCentralPage() {
                         <SelectItem value="false">Tidak Aktif</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit_profile_picture">URL Foto Profil</Label>
+                    <Input
+                      id="edit_profile_picture"
+                      name="profile_picture"
+                      value={newUser.profile_picture || ""}
+                      onChange={(e) => handleInputChange(e, "user")}
+                      placeholder="Masukkan URL foto profil"
+                    />
                   </div>
                 </div>
               </div>
