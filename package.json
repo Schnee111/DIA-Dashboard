@@ -6,11 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" db/seed.ts"
+    "lint": "next lint"
   },
   "dependencies": {
     "@aws-sdk/client-rds-data": "latest",
@@ -69,7 +65,6 @@
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "dotenv": "^16.5.0",
-    "drizzle-orm": "^0.43.1",
     "embla-carousel-react": "8.5.1",
     "expo-sqlite": "latest",
     "gel": "latest",
@@ -102,7 +97,6 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "drizzle-kit": "^0.31.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
