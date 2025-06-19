@@ -725,7 +725,7 @@ export default function DataPublikPage() {
           </TabsContent>
         </Tabs>
       </div>
-
+{/* 
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -761,7 +761,48 @@ export default function DataPublikPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
+
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+  <DialogContent className="sm:max-w-[600px]">
+    <DialogHeader>
+      <DialogTitle>{modalTitle}</DialogTitle>
+      <DialogDescription>Rincian lengkap item.</DialogDescription>
+    </DialogHeader>
+    <div className="grid gap-3 py-4 max-h-[60vh] overflow-y-auto pr-4">
+      {selectedItem &&
+        Object.entries(selectedItem).map(
+          ([key, value]) =>
+            ![
+              "kerjasama_id",
+              "mitra_id",
+              "key",
+              "negara_id",
+              "jenis_partner_id",
+              "jenis_dok_id",
+              "pj_upi",
+              "pj_mitra",
+              "penandatangan_upi",
+              "penandatangan_mitra",
+            ].some((k) => key.includes(k)) && (
+              <div key={key} className="grid grid-cols-3 items-start gap-4 border-b border-border pb-3">
+                <span className="text-sm font-semibold text-muted-foreground col-span-1">
+                  {formatLabel(key)}
+                </span>
+                <span className="text-sm text-foreground col-span-2 break-words">
+                  {formatValue(key, value)}
+                </span>
+              </div>
+            ),
+        )}
+    </div>
+    <DialogFooter>
+      <Button variant="secondary" onClick={() => setIsDetailModalOpen(false)}>
+        Tutup
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </DashboardLayout>
   )
 }
