@@ -860,7 +860,7 @@ export default function DataCentralPage() {
   return (
     <DashboardLayout role="admin">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Kelola Data Central</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Kelola Data</h1>
       </div>
 
       {/* Year Range Filter Info */}

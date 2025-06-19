@@ -38,42 +38,9 @@ export function Sidebar({ role }: SidebarProps) {
       icon: Home,
     },
     {
-      name: "Kelola Data Central",
-      href: "/dashboard/admin/data-central",
+      name: "Kelola Data",
+      href: "/dashboard/admin/data",
       icon: Database,
-    },
-    {
-      name: "Kelola Mitra",
-      href: "/dashboard/admin/mitra",
-      icon: Users,
-    },
-    {
-      name: "Kelola Hak Akses",
-      href: "/dashboard/admin/hak-akses",
-      icon: UserCog,
-    },
-    {
-      name: "Kelola Dashboard Statistik",
-      href: "/dashboard/admin/statistik",
-      icon: BarChart3,
-    },
-  ]
-
-  const staffRoutes = [
-    {
-      name: "Dashboard",
-      href: "/dashboard/staff",
-      icon: Home,
-    },
-    {
-      name: "Ajukan Surat",
-      href: "/dashboard/staff/ajukan-surat",
-      icon: FileText,
-    },
-    {
-      name: "Kelola Data Mitra Tertentu",
-      href: "/dashboard/staff/kelola-mitra",
-      icon: Users,
     },
   ]
 
@@ -84,18 +51,13 @@ export function Sidebar({ role }: SidebarProps) {
       icon: Home,
     },
     {
-      name: "Lihat Dashboard Statistik",
-      href: "/dashboard/guest/statistik",
-      icon: BarChart3,
-    },
-    {
       name: "Lihat Data Kerja Sama",
       href: "/dashboard/guest/data-kerjasama",
       icon: FileBarChart,
     },
   ]
 
-  const routes = role === "admin" ? adminRoutes : role === "staff" ? staffRoutes : guestRoutes
+  const routes = role === "admin" ? adminRoutes : guestRoutes
 
   return (
     <div
