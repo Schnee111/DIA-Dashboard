@@ -1,19 +1,19 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout" 
-import { StatCard } from "@/components/stat-card"
+import { StatCard } from "@/components/dashboard/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileText, Users, Database, Download, Calendar } from "lucide-react"
 import { useState, useEffect } from "react"
-import DistributionChart from "@/components/country-distribution-chart"
+import DistributionChart from "@/components/dashboard/country-distribution-chart"
 import {
   fetchDashboardData,
   extractYearsFromDates,
 } from "@/lib/dataService"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { TrendKerjasamaChart } from "@/components/trend-kerjasama-chart"
+import { TrendKerjasamaChart } from "@/components/dashboard/trend-kerjasama-chart"
 
 // Define TypeScript interfaces
 interface ChartDataItem { name: string; value: number }

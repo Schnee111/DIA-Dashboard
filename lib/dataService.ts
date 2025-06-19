@@ -1,72 +1,23 @@
 // lib/dataService.ts
 import { supabase } from "@/lib/supabaseClient"
+import type {
+  MitraData,
+  KerjasamaData,
+  PersonelData,
+  JabatanData,
+  NegaraData,
+  JenisPartnerData,
+  JenisDokumenData,
+} from "@/types"
 
-// Define TypeScript interfaces based on database schema
-// Add new interfaces for personel and jabatan
-interface PersonelItem {
-  personel_id: number
-  nama: string
-  email?: string
-  kontak?: string
-  jabatan_id?: number
-  pihak: "UPI" | "MITRA"
-  nama_jabatan?: string
-  created_at: string
-  updated_at: string
-}
-
-interface JabatanItem {
-  jabatan_id: number
-  nama_jabatan: string
-  pihak: "UPI" | "MITRA"
-  created_at: string
-  updated_at: string
-}
-
-// Update KerjasamaItem interface to match v_semua_kerjasama view
-interface KerjasamaItem {
-  kerjasama_id: number
-  no_dokumen?: string
-  bidang_kerjasama?: string
-  judul_kerjasama: string
-  tanggal_mulai: string
-  tanggal_berakhir: string
-  status: string
-  catatan?: string
-  jumlah_pihak?: number
-  output_kerjasama?: string
-  tgl_input?: string
-  tgl_lapor?: string
-  status_lapor?: string
-  tahun?: number
-  pelaksana?: string
-  nama_mitra: string
-  nama_negara: string
-  jenis_dokumen: string
-  nama_pj_upi?: string
-  nama_pj_mitra?: string
-  nama_penandatangan_upi?: string
-  nama_penandatangan_mitra?: string
-  // Foreign key IDs for form handling
-  mitra_id?: number
-  jenis_dok_id?: number
-  pj_upi?: number
-  pj_mitra?: number
-  penandatangan_upi?: number
-  penandatangan_mitra?: number
-}
-
-interface MitraItem {
-  mitra_id: number
-  nama_mitra: string
-  nama_negara: string
-  alamat: string
-  jenis_partner_nama: string
-  negara_id?: number
-  jenis_partner_id?: number
-  jumlah_kerjasama?: number
-  [key: string]: any
-}
+// Use the types from types/index.ts instead of defining new ones
+type PersonelItem = PersonelData
+type JabatanItem = JabatanData
+type KerjasamaItem = KerjasamaData
+type MitraItem = MitraData
+type NegaraItem = NegaraData
+type JenisPartnerItem = JenisPartnerData
+type JenisDokumenItem = JenisDokumenData
 
 interface UserItem {
   id: string
@@ -111,21 +62,6 @@ interface RolePermissionItem {
   permission_id: string
   created_at: string
   updated_at: string
-}
-
-interface NegaraItem {
-  negara_id: number
-  nama_negara: string
-}
-
-interface JenisPartnerItem {
-  jenis_partner_id: number
-  nama_jenis: string
-}
-
-interface JenisDokumenItem {
-  jenis_dok_id: number
-  nama_jenis: string
 }
 
 interface ChartDataItem {
@@ -423,37 +359,62 @@ export async function deleteMitra(id: number): Promise<boolean> {
  */
 export async function createKerjasama(kerjasamaData: Partial<KerjasamaItem>): Promise<KerjasamaItem> {
   try {
-    const { data, error } = await supabase
-      .from("kerjasama")
-      .insert([
-        {
-          no_dokumen: kerjasamaData.no_dokumen,
-          bidang_kerjasama: kerjasamaData.bidang_kerjasama,
-          judul_kerjasama: kerjasamaData.judul_kerjasama,
-          tanggal_mulai: kerjasamaData.tanggal_mulai,
-          tanggal_berakhir: kerjasamaData.tanggal_berakhir,
-          status: kerjasamaData.status,
-          catatan: kerjasamaData.catatan,
-          jumlah_pihak: kerjasamaData.jumlah_pihak,
-          output_kerjasama: kerjasamaData.output_kerjasama,
-          tgl_input: kerjasamaData.tgl_input,
-          tgl_lapor: kerjasamaData.tgl_lapor,
-          status_lapor: kerjasamaData.status_lapor,
-          tahun: kerjasamaData.tahun,
-          pelaksana: kerjasamaData.pelaksana,
-          mitra_id: kerjasamaData.mitra_id,
-          jenis_dok_id: kerjasamaData.jenis_dok_id,
-          pj_upi: kerjasamaData.pj_upi,
-          pj_mitra: kerjasamaData.pj_mitra,
-          penandatangan_upi: kerjasamaData.penandatangan_upi,
-          penandatangan_mitra: kerjasamaData.penandatangan_mitra,
-        },
-      ])
-      .select()
-      .single()
+    console.log("Creating kerjasama with data:", kerjasamaData)
 
-    if (error) throw error
+    // Validate required fields
+    if (!kerjasamaData.judul_kerjasama) {
+      throw new Error("Judul kerjasama is required")
+    }
+    if (!kerjasamaData.mitra_id) {
+      throw new Error("Mitra is required")
+    }
+    if (!kerjasamaData.tanggal_mulai) {
+      throw new Error("Tanggal mulai is required")
+    }
+    if (!kerjasamaData.tanggal_berakhir) {
+      throw new Error("Tanggal berakhir is required")
+    }
 
+    // Prepare data for insertion - explicitly exclude kerjasama_id to let database auto-generate
+    const insertData = {
+      no_dokumen: kerjasamaData.no_dokumen || null,
+      bidang_kerjasama: kerjasamaData.bidang_kerjasama || null,
+      judul_kerjasama: kerjasamaData.judul_kerjasama,
+      tanggal_mulai: kerjasamaData.tanggal_mulai,
+      tanggal_berakhir: kerjasamaData.tanggal_berakhir,
+      status: kerjasamaData.status || "Draft",
+      catatan: kerjasamaData.catatan || null,
+      jumlah_pihak: kerjasamaData.jumlah_pihak || 2,
+      output_kerjasama: kerjasamaData.output_kerjasama || null,
+      tgl_input: kerjasamaData.tgl_input || new Date().toISOString().split("T")[0],
+      tgl_lapor: kerjasamaData.tgl_lapor || null,
+      status_lapor: kerjasamaData.status_lapor || "Belum",
+      tahun: kerjasamaData.tahun || new Date().getFullYear(),
+      pelaksana: kerjasamaData.pelaksana || null,
+      mitra_id: kerjasamaData.mitra_id,
+      jenis_dok_id: kerjasamaData.jenis_dok_id || null,
+      pj_upi: kerjasamaData.pj_upi || null,
+      pj_mitra: kerjasamaData.pj_mitra || null,
+      penandatangan_upi: kerjasamaData.penandatangan_upi || null,
+      penandatangan_mitra: kerjasamaData.penandatangan_mitra || null,
+    }
+
+    console.log("Insert data:", insertData)
+
+    const { data, error } = await supabase.from("kerjasama").insert([insertData]).select().single()
+
+    if (error) {
+      console.error("Supabase error:", error)
+
+      // Handle specific error cases
+      if (error.code === "23505") {
+        throw new Error("Terjadi konflik data. Silakan coba lagi atau hubungi administrator.")
+      }
+
+      throw error
+    }
+
+    console.log("Created kerjasama:", data)
     return data as KerjasamaItem
   } catch (error) {
     console.error("Error creating kerjasama:", error)
@@ -466,36 +427,42 @@ export async function createKerjasama(kerjasamaData: Partial<KerjasamaItem>): Pr
  */
 export async function updateKerjasama(id: number, kerjasamaData: Partial<KerjasamaItem>): Promise<KerjasamaItem> {
   try {
-    const { data, error } = await supabase
-      .from("kerjasama")
-      .update({
-        no_dokumen: kerjasamaData.no_dokumen,
-        bidang_kerjasama: kerjasamaData.bidang_kerjasama,
-        judul_kerjasama: kerjasamaData.judul_kerjasama,
-        tanggal_mulai: kerjasamaData.tanggal_mulai,
-        tanggal_berakhir: kerjasamaData.tanggal_berakhir,
-        status: kerjasamaData.status,
-        catatan: kerjasamaData.catatan,
-        jumlah_pihak: kerjasamaData.jumlah_pihak,
-        output_kerjasama: kerjasamaData.output_kerjasama,
-        tgl_input: kerjasamaData.tgl_input,
-        tgl_lapor: kerjasamaData.tgl_lapor,
-        status_lapor: kerjasamaData.status_lapor,
-        tahun: kerjasamaData.tahun,
-        pelaksana: kerjasamaData.pelaksana,
-        mitra_id: kerjasamaData.mitra_id,
-        jenis_dok_id: kerjasamaData.jenis_dok_id,
-        pj_upi: kerjasamaData.pj_upi,
-        pj_mitra: kerjasamaData.pj_mitra,
-        penandatangan_upi: kerjasamaData.penandatangan_upi,
-        penandatangan_mitra: kerjasamaData.penandatangan_mitra,
-      })
-      .eq("kerjasama_id", id)
-      .select()
-      .single()
+    console.log("Updating kerjasama with ID:", id, "Data:", kerjasamaData)
 
-    if (error) throw error
+    // Prepare data for update - only include fields that exist in the database
+    const updateData = {
+      no_dokumen: kerjasamaData.no_dokumen || null,
+      bidang_kerjasama: kerjasamaData.bidang_kerjasama || null,
+      judul_kerjasama: kerjasamaData.judul_kerjasama,
+      tanggal_mulai: kerjasamaData.tanggal_mulai,
+      tanggal_berakhir: kerjasamaData.tanggal_berakhir,
+      status: kerjasamaData.status,
+      catatan: kerjasamaData.catatan || null,
+      jumlah_pihak: kerjasamaData.jumlah_pihak,
+      output_kerjasama: kerjasamaData.output_kerjasama || null,
+      tgl_input: kerjasamaData.tgl_input || null,
+      tgl_lapor: kerjasamaData.tgl_lapor || null,
+      status_lapor: kerjasamaData.status_lapor,
+      tahun: kerjasamaData.tahun,
+      pelaksana: kerjasamaData.pelaksana || null,
+      mitra_id: kerjasamaData.mitra_id,
+      jenis_dok_id: kerjasamaData.jenis_dok_id || null,
+      pj_upi: kerjasamaData.pj_upi || null,
+      pj_mitra: kerjasamaData.pj_mitra || null,
+      penandatangan_upi: kerjasamaData.penandatangan_mitra || null,
+      penandatangan_mitra: kerjasamaData.penandatangan_mitra || null,
+    }
 
+    console.log("Update data:", updateData)
+
+    const { data, error } = await supabase.from("kerjasama").update(updateData).eq("kerjasama_id", id).select().single()
+
+    if (error) {
+      console.error("Supabase error:", error)
+      throw error
+    }
+
+    console.log("Updated kerjasama:", data)
     return data as KerjasamaItem
   } catch (error) {
     console.error("Error updating kerjasama:", error)
@@ -682,11 +649,11 @@ export async function createJabatan(jabatanData: Partial<JabatanItem>): Promise<
 }
 
 // Add quick create functions for reference tables
-export async function createNegara(namaNegaraData: string): Promise<NegaraItem> {
+export async function createNegara(negaraData: { nama_negara: string }): Promise<NegaraItem> {
   try {
     const { data, error } = await supabase
       .from("negara")
-      .insert([{ nama_negara: namaNegaraData }])
+      .insert([{ nama_negara: negaraData.nama_negara }])
       .select()
       .single()
 
@@ -699,11 +666,11 @@ export async function createNegara(namaNegaraData: string): Promise<NegaraItem> 
   }
 }
 
-export async function createJenisDokumen(namaJenisData: string): Promise<JenisDokumenItem> {
+export async function createJenisDokumen(jenisDokumenData: { nama_jenis: string }): Promise<JenisDokumenItem> {
   try {
     const { data, error } = await supabase
       .from("jenis_dokumen")
-      .insert([{ nama_jenis: namaJenisData }])
+      .insert([{ nama_jenis: jenisDokumenData.nama_jenis }])
       .select()
       .single()
 
@@ -910,11 +877,10 @@ export function processKerjasamaTrend(kerjasamaData: KerjasamaItem[]): TrendChar
       year: year,
       ...yearlyData[year],
     }))
-    .sort((a, b) => parseInt(a.year) - parseInt(b.year)) // Urutkan berdasarkan tahun
+    .sort((a, b) => Number.parseInt(a.year) - Number.parseInt(b.year)) // Urutkan berdasarkan tahun
 
   return trendData
 }
-
 
 /**
  * Calculate percentage from raw data
@@ -954,7 +920,6 @@ export async function fetchDashboardData(fromYear?: string, toYear?: string): Pr
     // Convert to percentages for pie charts
     const negaraPercentages = calculatePercentages(negaraStats)
     const jenisPercentages = calculatePercentages(jenisStats)
-
 
     return {
       kerjasamaData: filteredKerjasama,

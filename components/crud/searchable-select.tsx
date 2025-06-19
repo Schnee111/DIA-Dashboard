@@ -14,7 +14,7 @@ interface Option {
 
 interface SearchableSelectProps {
   options: Option[]
-  value?: string | number
+  value?: string | number | null | undefined
   onValueChange: (value: string | number) => void
   placeholder?: string
   searchPlaceholder?: string
@@ -39,7 +39,23 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false)
 
-  const selectedOption = options.find((option) => option.value === value)
+  // Debug logging
+  console.log("🔍 SearchableSelect Debug:", {
+    value,
+    valueType: typeof value,
+    valueString: value?.toString(),
+    optionsCount: options?.length || 0,
+    firstFewOptions: options?.slice(0, 3).map((opt) => ({
+      value: opt.value,
+      valueType: typeof opt.value,
+      valueString: opt.value?.toString(),
+      label: opt.label,
+    })),
+    hasExactMatch: options?.some((opt) => opt.value === value),
+    hasStringMatch: options?.some((opt) => opt.value.toString() === value?.toString()),
+  })
+
+  const selectedOption = options.find((option) => option.value.toString() === value?.toString())
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -93,7 +109,12 @@ export function SearchableSelect({
                     setOpen(false)
                   }}
                 >
-                  <Check className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")} />
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value?.toString() === option.value.toString() ? "opacity-100" : "opacity-0",
+                    )}
+                  />
                   {option.label}
                 </CommandItem>
               ))}
