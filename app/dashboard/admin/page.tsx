@@ -9,7 +9,7 @@ import { FileText, Users, Database, Download, Search, Calendar } from "lucide-re
 import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { DistributionChart } from "@/components/country-distribution-chart"
+import DistributionChart from "@/components/country-distribution-chart"
 import {
   fetchDashboardData,
   extractYearsFromDates,
