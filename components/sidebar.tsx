@@ -6,11 +6,9 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
-  BarChart3,
-  Database,
   Home, // Digunakan untuk Dashboard
   FileBarChart, // Digunakan untuk Data Publik
-  HardDrive, // Digunakan untuk Manajemen Data (contoh)
+  HardDrive, // Digunakan untuk Manajemen Data
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -27,7 +25,6 @@ export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
-  // 1. Definisikan semua kemungkinan navigasi dalam satu array
   const allNavigations = [
     {
       name: "Dashboard",
@@ -43,14 +40,12 @@ export function Sidebar({ role }: SidebarProps) {
     },
     {
       name: "Manajemen Data",
-      href: "admin/data", 
+      href: "/admin/data",
       icon: HardDrive,
       allowedRoles: ["admin"],
     },
-    // Tambahkan menu admin lainnya di sini jika perlu
   ];
 
-  // 2. Filter navigasi berdasarkan peran (role) yang diterima dari props
   const routes = allNavigations.filter(route =>
     route.allowedRoles.includes(role)
   );
@@ -59,7 +54,7 @@ export function Sidebar({ role }: SidebarProps) {
     <div
       className={cn(
         "group flex flex-col shadow-lg transition-all duration-300 ease-in-out",
-        "bg-sidebar", // Pastikan class ini ada di global.css Anda
+        "bg-sidebar", 
         collapsed ? "w-16" : "w-72",
       )}
     >
@@ -102,7 +97,8 @@ export function Sidebar({ role }: SidebarProps) {
                     href={route.href}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-white transition-all hover:bg-white/10",
-                      pathname === route.href && "bg-white/20 font-semibold",
+                      // **PERBAIKAN:** Menggunakan startsWith agar parent menu tetap aktif
+                      pathname.startsWith(route.href) && "bg-white/20 font-semibold",
                       collapsed && "justify-center px-2",
                     )}
                   >
@@ -123,19 +119,18 @@ export function Sidebar({ role }: SidebarProps) {
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="default"
-                  className={cn(
-                    "w-full justify-start bg-sidebar text-white hover:bg-sidebar/80",
-                    collapsed && "justify-center px-0",
-                  )}
-                  asChild
-                >
                   <Link href="/login">
-                    <LogOut className="h-4 w-4" />
-                    {!collapsed && <span className="ml-2">Logout</span>}
+                    <Button
+                      variant="default"
+                      className={cn(
+                        "w-full justify-start bg-sidebar text-white hover:bg-white/20", // **PERBAIKAN:** Efek hover lebih jelas
+                        collapsed && "justify-center px-0",
+                      )}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {!collapsed && <span className="ml-2">Logout</span>}
+                    </Button>
                   </Link>
-                </Button>
               </TooltipTrigger>
               {collapsed && <TooltipContent side="right">Logout</TooltipContent>}
             </Tooltip>
