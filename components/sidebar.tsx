@@ -7,77 +7,73 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   BarChart3,
-  FileText,
-  Home,
-  Users,
   Database,
-  UserCog,
+  Home, // Digunakan untuk Dashboard
+  FileBarChart, // Digunakan untuk Data Publik
+  HardDrive, // Digunakan untuk Manajemen Data (contoh)
   LogOut,
-  FileBarChart,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useTheme } from "next-themes"
 
 interface SidebarProps {
-  role: "admin" | "staff" | "guest"
+  role: "admin" | "guest"
 }
 
 export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
-  const { theme } = useTheme()
 
-  const adminRoutes = [
+  // 1. Definisikan semua kemungkinan navigasi dalam satu array
+  const allNavigations = [
     {
       name: "Dashboard",
-      href: "/dashboard/admin",
+      href: "/dashboard",
       icon: Home,
+      allowedRoles: ["admin", "guest"],
     },
     {
-      name: "Kelola Data",
-      href: "/dashboard/admin/data",
-      icon: Database,
-    },
-  ]
-
-  const guestRoutes = [
-    {
-      name: "Dashboard",
-      href: "/dashboard/guest",
-      icon: Home,
-    },
-    {
-      name: "Lihat Data Kerja Sama",
-      href: "/dashboard/guest/data-kerjasama",
+      name: "Data Publik",
+      href: "/data",
       icon: FileBarChart,
+      allowedRoles: ["admin", "guest"],
     },
-  ]
+    {
+      name: "Manajemen Data",
+      href: "/admin/data", 
+      icon: HardDrive,
+      allowedRoles: ["admin"],
+    },
+    // Tambahkan menu admin lainnya di sini jika perlu
+  ];
 
-  const routes = role === "admin" ? adminRoutes : guestRoutes
+  // 2. Filter navigasi berdasarkan peran (role) yang diterima dari props
+  const routes = allNavigations.filter(route =>
+    route.allowedRoles.includes(role)
+  );
 
   return (
     <div
       className={cn(
         "group flex flex-col shadow-lg transition-all duration-300 ease-in-out",
-        "bg-sidebar",
+        "bg-sidebar", // Pastikan class ini ada di global.css Anda
         collapsed ? "w-16" : "w-72",
       )}
     >
       <div className="flex h-auto items-center justify-between border-b border-white/20 px-4 pt-3 pb-2 bg-white">
         {!collapsed ? (
           <div className="flex items-center justify-between w-full">
-            <Link href={`/dashboard/${role}`} className="flex items-center gap-2 font-semibold">
+            <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
               <Image src="/logo-upi.png" alt="UPI Logo" width={150} height={43} className="h-auto" />
             </Link>
             <Button
               variant="ghost"
               size="sm"
               className="ml-2 h-8 w-8 rounded-full p-0"
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={() => setCollapsed(true)}
             >
               <ChevronLeft className="h-4 w-4 text-black" />
             </Button>
@@ -88,7 +84,7 @@ export function Sidebar({ role }: SidebarProps) {
               variant="ghost"
               size="sm"
               className="h-8 w-8 rounded-full p-0"
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={() => setCollapsed(false)}
             >
               <ChevronRight className="h-4 w-4 text-black" />
             </Button>
@@ -122,26 +118,29 @@ export function Sidebar({ role }: SidebarProps) {
       </ScrollArea>
 
       <div className="mt-auto p-4">
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="default"
-                className={cn(
-                  "w-full justify-start bg-sidebar text-white hover:bg-sidebar/80",
-                  collapsed && "justify-center px-0",
-                )}
-                asChild
-              >
-                <Link href="/login">
-                  <LogOut className="h-4 w-4" />
-                  {!collapsed && <span className="ml-2">Logout</span>}
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            {collapsed && <TooltipContent side="right">Logout</TooltipContent>}
-          </Tooltip>
-        </TooltipProvider>
+        {/* Tombol Logout hanya ditampilkan untuk Admin */}
+        {role === 'admin' && (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="default"
+                  className={cn(
+                    "w-full justify-start bg-sidebar text-white hover:bg-sidebar/80",
+                    collapsed && "justify-center px-0",
+                  )}
+                  asChild
+                >
+                  <Link href="/login">
+                    <LogOut className="h-4 w-4" />
+                    {!collapsed && <span className="ml-2">Logout</span>}
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              {collapsed && <TooltipContent side="right">Logout</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
     </div>
   )
