@@ -244,6 +244,10 @@ export default function DataCentralPage() {
   const [uniqueJenisDokumen, setUniqueJenisDokumen] = useState<string[]>([])
   const [availableYears, setAvailableYears] = useState<number[]>([])
 
+  // Add loading states for CRUD operations
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
   // Load data
   useEffect(() => {
     const loadData = async () => {
@@ -357,9 +361,15 @@ export default function DataCentralPage() {
     try {
       const newNegaraItem = await createNegara(namaNegaraData)
       setNegaraData((prev) => [...prev, newNegaraItem])
+
+      // Auto-select the newly created negara in the form
+      if (isAddMitraOpen || isEditMitraOpen || isAddMitraModalOpen) {
+        setNewMitra((prev) => ({ ...prev, negara_id: newNegaraItem.negara_id }))
+      }
+
       toast({
         title: "Berhasil",
-        description: "Negara berhasil ditambahkan",
+        description: "Negara berhasil ditambahkan dan dipilih dalam form",
       })
     } catch (error) {
       toast({
@@ -374,9 +384,15 @@ export default function DataCentralPage() {
     try {
       const newJenisItem = await createJenisDokumen(namaJenisData)
       setJenisDokumenData((prev) => [...prev, newJenisItem])
+
+      // Auto-select the newly created jenis dokumen in the form
+      if (isAddKerjasamaOpen || isEditKerjasamaOpen) {
+        setNewKerjasama((prev) => ({ ...prev, jenis_dok_id: newJenisItem.jenis_dok_id }))
+      }
+
       toast({
         title: "Berhasil",
-        description: "Jenis dokumen berhasil ditambahkan",
+        description: "Jenis dokumen berhasil ditambahkan dan dipilih dalam form",
       })
     } catch (error) {
       toast({
@@ -484,10 +500,19 @@ export default function DataCentralPage() {
     if (formType === "mitra") {
       setNewMitra((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
     } else if (formType === "kerjasama") {
-      if (name === "jumlah_pihak" || name === "tahun") {
+      if (
+        name === "jumlah_pihak" ||
+        name === "tahun" ||
+        name === "mitra_id" ||
+        name === "jenis_dok_id" ||
+        name === "pj_upi" ||
+        name === "pj_mitra" ||
+        name === "penandatangan_upi" ||
+        name === "penandatangan_mitra"
+      ) {
         setNewKerjasama((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
       } else {
-        setNewKerjasama((prev) => ({ ...prev, [name]: value === "" ? undefined : Number(value) }))
+        setNewKerjasama((prev) => ({ ...prev, [name]: value }))
       }
     } else if (formType === "personel") {
       if (name === "jabatan_id") {
@@ -502,6 +527,7 @@ export default function DataCentralPage() {
 
   // CRUD Operations for Mitra
   const handleAddMitra = async () => {
+    setIsSubmitting(true)
     try {
       const createdMitra = await createMitra(newMitra)
       // Reload data to get updated view
@@ -511,21 +537,26 @@ export default function DataCentralPage() {
       resetMitraForm()
 
       toast({
-        title: "Berhasil",
-        description: "Mitra berhasil ditambahkan",
+        title: "✅ Berhasil Ditambahkan",
+        description: `Mitra "${createdMitra.nama_mitra}" berhasil ditambahkan ke sistem`,
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error adding mitra:", error)
       toast({
-        title: "Error",
-        description: "Gagal menambahkan mitra",
+        title: "❌ Gagal Menambahkan",
+        description: "Terjadi kesalahan saat menambahkan mitra. Periksa data dan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleEditMitra = async () => {
     if (!selectedMitra) return
 
+    setIsSubmitting(true)
     try {
       await updateMitra(selectedMitra.mitra_id, newMitra)
       // Reload data to get updated view
@@ -533,23 +564,29 @@ export default function DataCentralPage() {
       setMitraData(mitraResponse as MitraData[])
       setIsEditMitraOpen(false)
       setSelectedMitra(null)
+      resetMitraForm()
 
       toast({
-        title: "Berhasil",
-        description: "Mitra berhasil diperbarui",
+        title: "✅ Berhasil Diperbarui",
+        description: `Data mitra "${newMitra.nama_mitra}" berhasil diperbarui dalam sistem`,
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error updating mitra:", error)
       toast({
-        title: "Error",
-        description: "Gagal memperbarui mitra",
+        title: "❌ Gagal Memperbarui",
+        description: "Terjadi kesalahan saat memperbarui data mitra. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleDeleteMitra = async () => {
     if (!selectedMitra) return
 
+    setIsDeleting(true)
     try {
       await deleteMitra(selectedMitra.mitra_id)
       setMitraData((prev) => prev.filter((item) => item.mitra_id !== selectedMitra.mitra_id))
@@ -557,20 +594,25 @@ export default function DataCentralPage() {
       setSelectedMitra(null)
 
       toast({
-        title: "Berhasil",
-        description: "Mitra berhasil dihapus",
+        title: "✅ Berhasil Dihapus",
+        description: `Data mitra "${selectedMitra.nama_mitra}" berhasil dihapus dari sistem`,
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error deleting mitra:", error)
       toast({
-        title: "Error",
-        description: "Gagal menghapus mitra",
+        title: "❌ Gagal Menghapus",
+        description: "Terjadi kesalahan saat menghapus data mitra. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   // CRUD Operations for Kerjasama
   const handleAddKerjasama = async () => {
+    setIsSubmitting(true)
     try {
       const createdKerjasama = await createKerjasama(newKerjasama)
       // Reload data to get updated view
@@ -580,21 +622,26 @@ export default function DataCentralPage() {
       resetKerjasamaForm()
 
       toast({
-        title: "Berhasil",
-        description: "Kerjasama berhasil ditambahkan",
+        title: "✅ Berhasil Ditambahkan",
+        description: "Data kerjasama berhasil ditambahkan ke sistem",
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error adding kerjasama:", error)
       toast({
-        title: "Error",
-        description: "Gagal menambahkan kerjasama",
+        title: "❌ Gagal Menambahkan",
+        description: "Terjadi kesalahan saat menambahkan data kerjasama. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleEditKerjasama = async () => {
     if (!selectedKerjasama) return
 
+    setIsSubmitting(true)
     try {
       await updateKerjasama(selectedKerjasama.kerjasama_id, newKerjasama)
       // Reload data to get updated view
@@ -602,23 +649,29 @@ export default function DataCentralPage() {
       setKerjasamaData(kerjasamaResponse as KerjasamaData[])
       setIsEditKerjasamaOpen(false)
       setSelectedKerjasama(null)
+      resetKerjasamaForm()
 
       toast({
-        title: "Berhasil",
-        description: "Kerjasama berhasil diperbarui",
+        title: "✅ Berhasil Diperbarui",
+        description: "Data kerjasama berhasil diperbarui",
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error updating kerjasama:", error)
       toast({
-        title: "Error",
-        description: "Gagal memperbarui kerjasama",
+        title: "❌ Gagal Memperbarui",
+        description: "Terjadi kesalahan saat memperbarui data kerjasama. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleDeleteKerjasama = async () => {
     if (!selectedKerjasama) return
 
+    setIsDeleting(true)
     try {
       await deleteKerjasama(selectedKerjasama.kerjasama_id)
       setKerjasamaData((prev) => prev.filter((item) => item.kerjasama_id !== selectedKerjasama.kerjasama_id))
@@ -626,20 +679,25 @@ export default function DataCentralPage() {
       setSelectedKerjasama(null)
 
       toast({
-        title: "Berhasil",
-        description: "Kerjasama berhasil dihapus",
+        title: "✅ Berhasil Dihapus",
+        description: `Data kerjasama "${selectedKerjasama.judul_kerjasama}" berhasil dihapus dari sistem`,
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error deleting kerjasama:", error)
       toast({
-        title: "Error",
-        description: "Gagal menghapus kerjasama",
+        title: "❌ Gagal Menghapus",
+        description: "Terjadi kesalahan saat menghapus data kerjasama. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   // CRUD Operations for Personel
   const handleAddPersonel = async () => {
+    setIsSubmitting(true)
     try {
       const createdPersonel = await createPersonel(newPersonel)
       // Reload data to get updated view
@@ -649,21 +707,26 @@ export default function DataCentralPage() {
       resetPersonelForm()
 
       toast({
-        title: "Berhasil",
-        description: "Personel berhasil ditambahkan",
+        title: "✅ Berhasil Ditambahkan",
+        description: "Data personel berhasil ditambahkan ke sistem",
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error adding personel:", error)
       toast({
-        title: "Error",
-        description: "Gagal menambahkan personel",
+        title: "❌ Gagal Menambahkan",
+        description: "Terjadi kesalahan saat menambahkan data personel. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleEditPersonel = async () => {
     if (!selectedPersonel) return
 
+    setIsSubmitting(true)
     try {
       await updatePersonel(selectedPersonel.personel_id, newPersonel)
       // Reload data to get updated view
@@ -671,23 +734,29 @@ export default function DataCentralPage() {
       setPersonelData(personelResponse as PersonelData[])
       setIsEditPersonelOpen(false)
       setSelectedPersonel(null)
+      resetPersonelForm()
 
       toast({
-        title: "Berhasil",
-        description: "Personel berhasil diperbarui",
+        title: "✅ Berhasil Diperbarui",
+        description: "Data personel berhasil diperbarui",
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error updating personel:", error)
       toast({
-        title: "Error",
-        description: "Gagal memperbarui personel",
+        title: "❌ Gagal Memperbarui",
+        description: "Terjadi kesalahan saat memperbarui data personel. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleDeletePersonel = async () => {
     if (!selectedPersonel) return
 
+    setIsDeleting(true)
     try {
       await deletePersonel(selectedPersonel.personel_id)
       setPersonelData((prev) => prev.filter((item) => item.personel_id !== selectedPersonel.personel_id))
@@ -695,15 +764,19 @@ export default function DataCentralPage() {
       setSelectedPersonel(null)
 
       toast({
-        title: "Berhasil",
-        description: "Personel berhasil dihapus",
+        title: "✅ Berhasil Dihapus",
+        description: `Data personel "${selectedPersonel.nama}" berhasil dihapus dari sistem`,
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error deleting personel:", error)
       toast({
-        title: "Error",
-        description: "Gagal menghapus personel",
+        title: "❌ Gagal Menghapus",
+        description: "Terjadi kesalahan saat menghapus data personel. Silakan coba lagi.",
         variant: "destructive",
       })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -714,16 +787,24 @@ export default function DataCentralPage() {
       // Reload data to get updated view
       const mitraResponse = await fetchMitraData()
       setMitraData(mitraResponse as MitraData[])
+
+      // Auto-select the newly created mitra in the kerjasama form
+      if (isAddKerjasamaOpen || isEditKerjasamaOpen) {
+        setNewKerjasama((prev) => ({ ...prev, mitra_id: createdMitra.mitra_id }))
+      }
+
       setIsAddMitraModalOpen(false)
       resetMitraForm()
 
       toast({
-        title: "Berhasil",
-        description: "Mitra berhasil ditambahkan",
+        title: "✅ Berhasil",
+        description: "Mitra berhasil ditambahkan dan dipilih dalam form kerjasama",
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error adding new mitra from modal:", error)
       toast({
-        title: "Error",
+        title: "❌ Gagal",
         description: "Gagal menambahkan mitra",
         variant: "destructive",
       })
@@ -736,16 +817,30 @@ export default function DataCentralPage() {
       // Reload data to get updated view
       const personelResponse = await fetchPersonel()
       setPersonelData(personelResponse as PersonelData[])
+
+      // Auto-select the newly created personel in the kerjasama form based on pihak
+      if (isAddKerjasamaOpen || isEditKerjasamaOpen) {
+        if (createdPersonel.pihak === "UPI") {
+          // Check which UPI field was being filled (could be pj_upi or penandatangan_upi)
+          // For simplicity, we'll set it to pj_upi, but you might want to track which field triggered the modal
+          setNewKerjasama((prev) => ({ ...prev, pj_upi: createdPersonel.personel_id }))
+        } else if (createdPersonel.pihak === "MITRA") {
+          setNewKerjasama((prev) => ({ ...prev, pj_mitra: createdPersonel.personel_id }))
+        }
+      }
+
       setIsAddPersonelModalOpen(false)
       resetPersonelForm()
 
       toast({
-        title: "Berhasil",
-        description: "Personel berhasil ditambahkan",
+        title: "✅ Berhasil",
+        description: "Personel berhasil ditambahkan dan dipilih dalam form kerjasama",
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error adding new personel from modal:", error)
       toast({
-        title: "Error",
+        title: "❌ Gagal",
         description: "Gagal menambahkan personel",
         variant: "destructive",
       })
@@ -756,16 +851,24 @@ export default function DataCentralPage() {
     try {
       const createdJabatan = await createJabatan(newJabatan)
       setJabatanData((prev) => [...prev, createdJabatan])
+
+      // Auto-select the newly created jabatan in the personel form
+      if (isAddPersonelOpen || isEditPersonelOpen || isAddPersonelModalOpen) {
+        setNewPersonel((prev) => ({ ...prev, jabatan_id: createdJabatan.jabatan_id }))
+      }
+
       setIsAddJabatanModalOpen(false)
       resetJabatanForm()
 
       toast({
-        title: "Berhasil",
-        description: "Jabatan berhasil ditambahkan",
+        title: "✅ Berhasil",
+        description: "Jabatan berhasil ditambahkan dan dipilih dalam form personel",
+        variant: "default",
       })
     } catch (error) {
+      console.error("Error adding new jabatan:", error)
       toast({
-        title: "Error",
+        title: "❌ Gagal",
         description: "Gagal menambahkan jabatan",
         variant: "destructive",
       })
@@ -856,6 +959,25 @@ export default function DataCentralPage() {
       return `Kerjasama yang berlangsung antara tahun ${filterYearFrom} - ${filterYearTo}`
     }
   }
+
+  // Reset form when dialogs close
+  useEffect(() => {
+    if (!isAddMitraOpen && !isEditMitraOpen) {
+      resetMitraForm()
+    }
+  }, [isAddMitraOpen, isEditMitraOpen])
+
+  useEffect(() => {
+    if (!isAddKerjasamaOpen && !isEditKerjasamaOpen) {
+      resetKerjasamaForm()
+    }
+  }, [isAddKerjasamaOpen, isEditKerjasamaOpen])
+
+  useEffect(() => {
+    if (!isAddPersonelOpen && !isEditPersonelOpen) {
+      resetPersonelForm()
+    }
+  }, [isAddPersonelOpen, isEditPersonelOpen])
 
   return (
     <DashboardLayout role="admin">
@@ -977,10 +1099,19 @@ export default function DataCentralPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsAddMitraOpen(false)}>
+                      <Button variant="outline" onClick={() => setIsAddMitraOpen(false)} disabled={isSubmitting}>
                         Batal
                       </Button>
-                      <Button onClick={handleAddMitra}>Simpan</Button>
+                      <Button onClick={handleAddMitra} disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Menyimpan...
+                          </>
+                        ) : (
+                          "Simpan"
+                        )}
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -1288,10 +1419,19 @@ export default function DataCentralPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditMitraOpen(false)}>
+                <Button variant="outline" onClick={() => setIsEditMitraOpen(false)} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button onClick={handleEditMitra}>Simpan Perubahan</Button>
+                <Button onClick={handleEditMitra} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Perubahan"
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1308,8 +1448,19 @@ export default function DataCentralPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteMitra} className="bg-red-600 hover:bg-red-700">
-                  Hapus
+                <AlertDialogAction
+                  onClick={handleDeleteMitra}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Menghapus...
+                    </>
+                  ) : (
+                    "Hapus"
+                  )}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -1619,10 +1770,19 @@ export default function DataCentralPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsAddKerjasamaOpen(false)}>
+                      <Button variant="outline" onClick={() => setIsAddKerjasamaOpen(false)} disabled={isSubmitting}>
                         Batal
                       </Button>
-                      <Button onClick={handleAddKerjasama}>Simpan</Button>
+                      <Button onClick={handleAddKerjasama} disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Menyimpan...
+                          </>
+                        ) : (
+                          "Simpan"
+                        )}
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -2286,10 +2446,19 @@ export default function DataCentralPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditKerjasamaOpen(false)}>
+                <Button variant="outline" onClick={() => setIsEditKerjasamaOpen(false)} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button onClick={handleEditKerjasama}>Simpan Perubahan</Button>
+                <Button onClick={handleEditKerjasama} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Perubahan"
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -2306,8 +2475,19 @@ export default function DataCentralPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteKerjasama} className="bg-red-600 hover:bg-red-700">
-                  Hapus
+                <AlertDialogAction
+                  onClick={handleDeleteKerjasama}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Menghapus...
+                    </>
+                  ) : (
+                    "Hapus"
+                  )}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -2402,10 +2582,19 @@ export default function DataCentralPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsAddPersonelOpen(false)}>
+                      <Button variant="outline" onClick={() => setIsAddPersonelOpen(false)} disabled={isSubmitting}>
                         Batal
                       </Button>
-                      <Button onClick={handleAddPersonel}>Simpan</Button>
+                      <Button onClick={handleAddPersonel} disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Menyimpan...
+                          </>
+                        ) : (
+                          "Simpan"
+                        )}
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -2741,10 +2930,19 @@ export default function DataCentralPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditPersonelOpen(false)}>
+                <Button variant="outline" onClick={() => setIsEditPersonelOpen(false)} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button onClick={handleEditPersonel}>Simpan Perubahan</Button>
+                <Button onClick={handleEditPersonel} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Perubahan"
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -2761,8 +2959,19 @@ export default function DataCentralPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeletePersonel} className="bg-red-600 hover:bg-red-700">
-                  Hapus
+                <AlertDialogAction
+                  onClick={handleDeletePersonel}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Menghapus...
+                    </>
+                  ) : (
+                    "Hapus"
+                  )}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
