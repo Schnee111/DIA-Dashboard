@@ -138,11 +138,19 @@ interface ChartData {
   jenisStats: ChartDataItem[]
 }
 
+// Interface untuk data tren
+interface TrendChartData {
+  year: string
+  Total: number
+  [key: string]: any
+}
+
 interface DashboardData {
   kerjasamaData: KerjasamaItem[]
   mitraData: MitraItem[]
   negaraStats: ChartDataItem[]
   jenisStats: ChartDataItem[]
+  kerjasamaTrend: TrendChartData[]
 }
 
 // ============= BASIC DATA FETCHING =============
@@ -862,6 +870,53 @@ export function processChartData(kerjasamaData: KerjasamaItem[]): ChartData {
 }
 
 /**
+ * Process kerjasama data for trend chart
+ * Menghitung jumlah kerjasama per tahun berdasarkan jenis dokumen
+ */
+export function processKerjasamaTrend(kerjasamaData: KerjasamaItem[]): TrendChartData[] {
+  if (!kerjasamaData || kerjasamaData.length === 0) {
+    return []
+  }
+
+  const yearlyData: { [year: string]: { [docType: string]: number; Total: number } } = {}
+
+  // Inisialisasi jenis dokumen yang ada
+  const docTypes = [...new Set(kerjasamaData.map((item) => item.jenis_dokumen))]
+
+  kerjasamaData.forEach((item) => {
+    // Gunakan tanggal mulai untuk menentukan tahun kerjasama
+    if (item.tanggal_mulai) {
+      const year = new Date(item.tanggal_mulai).getFullYear().toString()
+
+      if (!yearlyData[year]) {
+        // Inisialisasi tahun jika belum ada
+        yearlyData[year] = { Total: 0 }
+        docTypes.forEach((type) => {
+          yearlyData[year][type] = 0
+        })
+      }
+
+      // Tambah hitungan
+      yearlyData[year].Total++
+      if (item.jenis_dokumen) {
+        yearlyData[year][item.jenis_dokumen]++
+      }
+    }
+  })
+
+  // Ubah format data menjadi array yang bisa digunakan oleh Recharts
+  const trendData = Object.keys(yearlyData)
+    .map((year) => ({
+      year: year,
+      ...yearlyData[year],
+    }))
+    .sort((a, b) => parseInt(a.year) - parseInt(b.year)) // Urutkan berdasarkan tahun
+
+  return trendData
+}
+
+
+/**
  * Calculate percentage from raw data
  */
 export function calculatePercentages(chartData: ChartDataItem[]): ChartDataItem[] {
@@ -894,16 +949,19 @@ export async function fetchDashboardData(fromYear?: string, toYear?: string): Pr
 
     // Process data for charts
     const { negaraStats, jenisStats } = processChartData(filteredKerjasama)
+    const kerjasamaTrend = processKerjasamaTrend(filteredKerjasama) // Proses data tren
 
     // Convert to percentages for pie charts
     const negaraPercentages = calculatePercentages(negaraStats)
     const jenisPercentages = calculatePercentages(jenisStats)
+
 
     return {
       kerjasamaData: filteredKerjasama,
       mitraData: filteredMitra,
       negaraStats: negaraPercentages,
       jenisStats: jenisPercentages,
+      kerjasamaTrend: kerjasamaTrend,
     }
   } catch (error) {
     console.error("Error fetching dashboard data:", error)

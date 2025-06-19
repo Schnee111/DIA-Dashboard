@@ -19,6 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { TrendKerjasamaChart } from "@/components/trend-kerjasama-chart"
 
 // Define TypeScript interfaces based on database schema
 interface KerjasamaItem {
@@ -58,6 +59,12 @@ interface ChartDataItem {
   value: number
 }
 
+interface TrendChartData {
+  year: string
+  Total: number
+  [key: string]: any
+}
+
 export default function AdminDashboardPage() {
   const { toast } = useToast()
 
@@ -80,6 +87,7 @@ export default function AdminDashboardPage() {
   // For charts
   const [negaraStats, setNegaraStats] = useState<ChartDataItem[]>([])
   const [jenisStats, setJenisStats] = useState<ChartDataItem[]>([])
+   const [kerjasamaTrend, setKerjasamaTrend] = useState<TrendChartData[]>([])
   const [aktivitasTerbaru, setAktivitasTerbaru] = useState<ActivityItem[]>([])
 
   // Colors for pie chart
@@ -97,6 +105,7 @@ export default function AdminDashboardPage() {
         setMitraData(data.mitraData)
         setNegaraStats(data.negaraStats)
         setJenisStats(data.jenisStats)
+        setKerjasamaTrend(data.kerjasamaTrend)
 
         // Extract years for filter options
         const allDates = [
@@ -277,6 +286,14 @@ export default function AdminDashboardPage() {
           />
         </div>
 
+        <div className="mt-6">
+          <TrendKerjasamaChart
+            data={kerjasamaTrend}
+            title="Tren Kerjasama per Tahun"
+            description="Menampilkan jumlah kerjasama baru berdasarkan tahun"
+          />
+        </div>
+        
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 mt-6">
           <Card className="lg:col-span-4 row-span-5">
             <CardHeader>
