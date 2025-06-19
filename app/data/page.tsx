@@ -1,106 +1,51 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { StatCard } from "@/components/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { FileText, Users, Database, Download, Search, Calendar, Eye, ArrowUpDown, Check, ChevronsUpDown, X } from "lucide-react"
+import { Eye, ArrowUpDown, Check, ChevronsUpDown, X, Search, Download } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
-import DistributionChart from "@/components/country-distribution-chart"
 import {
   fetchDashboardData,
-  extractYearsFromDates,
-  isCooperationPeriodInYearRange,
   exportToCSV,
 } from "@/lib/dataService"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { TrendKerjasamaChart } from "@/components/trend-kerjasama-chart"
 import { cn } from "@/lib/utils"
 
 // Define TypeScript interfaces
 interface KerjasamaItem {
-  kerjasama_id: number
-  judul_kerjasama: string
-  nama_mitra: string
-  nama_negara: string
-  jenis_dokumen: string
-  bidang_kerjasama?: string
-  tanggal_mulai: string
-  tanggal_berakhir: string
-  status: string
-  pelaksana?: string
-  [key: string]: any
+  kerjasama_id: number; judul_kerjasama: string; nama_mitra: string; nama_negara: string; jenis_dokumen: string; tanggal_mulai: string; tanggal_berakhir: string; status: string; [key: string]: any;
 }
-
 interface MitraItem {
-  mitra_id: number
-  nama_mitra: string
-  nama_negara: string
-  alamat: string
-  jenis_partner_nama: string
-  jumlah_kerjasama?: number
-  [key:string]: any
+  mitra_id: number; nama_mitra: string; nama_negara: string; alamat: string; jenis_partner_nama: string; jumlah_kerjasama?: number; [key:string]: any;
 }
-
-interface ActivityItem {
-  id?: number
-  deskripsi?: string
-  user_id?: string
-  created_at?: string
-  [key: string]: any
-}
-
-interface ChartDataItem { name: string; value: number }
-interface TrendChartData { year: string; Total: number; [key: string]: any }
 type SortDirection = 'ascending' | 'descending';
 
-// Helper functions for modal and formatting
-const formatLabel = (key: string) => {
-    if (key === 'nama_pj_upi') return "Nama PJ UPI"
-    if (key === 'nama_pj_mitra') return "Nama PJ Mitra"
-    return key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-}
+// Helper functions
+const formatLabel = (key: string) => key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 const formatValue = (key: string, value: any) => {
     if (!value) return "-";
-    if (key.includes("tanggal") || key.includes("created_at") || key.includes("updated_at")) {
-        const date = new Date(value);
-        return isNaN(date.getTime()) ? value : date.toLocaleDateString("id-ID", { year: 'numeric', month: 'long', day: 'numeric' });
-    }
+    if (key.includes("tanggal")) return new Date(value).toLocaleDateString("id-ID", { year: 'numeric', month: 'long', day: 'numeric' });
     return value.toString();
 }
-const formatDate = (dateString?: string) => {
-  if (!dateString) return "-";
-  return new Date(dateString).toLocaleDateString("id-ID", {day: '2-digit', month: '2-digit', year: 'numeric'});
-}
+const formatDate = (dateString?: string) => !dateString ? "-" : new Date(dateString).toLocaleDateString("id-ID", {day: '2-digit', month: '2-digit', year: 'numeric'});
 
-export default function AdminDashboardPage() {
+export default function DataPublikPage() {
   const { toast } = useToast()
 
-  // Data states
   const [kerjasamaData, setKerjasamaData] = useState<KerjasamaItem[]>([])
   const [mitraData, setMitraData] = useState<MitraItem[]>([])
   const [loading, setLoading] = useState<boolean>(true)
-  const [aktivitasTerbaru, setAktivitasTerbaru] = useState<ActivityItem[]>([])
-  
-  // Chart states
-  const [negaraStats, setNegaraStats] = useState<ChartDataItem[]>([])
-  const [jenisStats, setJenisStats] = useState<ChartDataItem[]>([])
-  const [kerjasamaTrend, setKerjasamaTrend] = useState<TrendChartData[]>([])
-
-  // Modal states
   const [selectedItem, setSelectedItem] = useState<KerjasamaItem | MitraItem | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState("")
-
-  // Filter states
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [mitraSearchTerm, setMitraSearchTerm] = useState<string>("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
@@ -109,61 +54,43 @@ export default function AdminDashboardPage() {
   const [filterMitra, setFilterMitra] = useState<string>("all")
   const [filterMitraNegara, setFilterMitraNegara] = useState<string>("all")
   const [filterJenisPartner, setFilterJenisPartner] = useState<string>("all")
-  const [filterYearFrom, setFilterYearFrom] = useState("all")
-  const [filterYearTo, setFilterYearTo] = useState("all")
-  const [availableYears, setAvailableYears] = useState<number[]>([])
-
-  // Sorting states
   const [sortConfig, setSortConfig] = useState<{ key: keyof KerjasamaItem; direction: SortDirection } | null>({ key: 'tanggal_mulai', direction: 'descending' });
   const [mitraSortConfig, setMitraSortConfig] = useState<{ key: keyof MitraItem; direction: SortDirection } | null>({ key: 'nama_mitra', direction: 'ascending' });
-
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [mitraCurrentPage, setMitraCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const loadData = async () => {
       setLoading(true)
       try {
-        const data = await fetchDashboardData(filterYearFrom, filterYearTo)
+        const data = await fetchDashboardData()
         setKerjasamaData(data.kerjasamaData)
         setMitraData(data.mitraData)
-        setNegaraStats(data.negaraStats)
-        setJenisStats(data.jenisStats)
-        setKerjasamaTrend(data.kerjasamaTrend)
-        const allDates = [...data.kerjasamaData.map(i => i.tanggal_mulai), ...data.kerjasamaData.map(i => i.tanggal_berakhir)].filter(Boolean)
-        setAvailableYears(extractYearsFromDates(allDates))
       } catch (error) {
-        toast({ title: "Error", description: "Gagal memuat data dashboard", variant: "destructive" })
+        toast({ title: "Error", description: "Gagal memuat data", variant: "destructive" })
       } finally {
         setLoading(false)
       }
     }
-    loadDashboardData()
-  }, [filterYearFrom, filterYearTo, toast])
+    loadData()
+  }, [toast])
 
-  // Memoized lists for filters
   const uniqueNegara = useMemo(() => [...new Set(kerjasamaData.map(item => item.nama_negara))].sort(), [kerjasamaData]);
   const uniqueJenisDokumen = useMemo(() => [...new Set(kerjasamaData.map(item => item.jenis_dokumen))].sort(), [kerjasamaData]);
   const uniqueMitra = useMemo(() => [...new Set(kerjasamaData.map(item => item.nama_mitra))].sort(), [kerjasamaData]);
   const uniqueMitraNegara = useMemo(() => [...new Set(mitraData.map(item => item.nama_negara))].sort(), [mitraData]);
   const uniqueJenisPartner = useMemo(() => [...new Set(mitraData.map(item => item.jenis_partner_nama))].sort(), [mitraData]);
 
-  // Filtering and Sorting Logic
   const filteredAndSortedKerjasama = useMemo(() => {
     let items = kerjasamaData.filter(item => 
       (item.judul_kerjasama?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-       item.nama_mitra?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       item.bidang_kerjasama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       item.pelaksana?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+       item.nama_mitra?.toLowerCase().includes(searchTerm.toLowerCase())) &&
       (filterStatus === 'all' || item.status === filterStatus) &&
       (filterNegara === 'all' || item.nama_negara === filterNegara) &&
       (filterJenisDokumen === 'all' || item.jenis_dokumen === filterJenisDokumen) &&
-      (filterMitra === 'all' || item.nama_mitra === filterMitra) &&
-      isCooperationPeriodInYearRange(item.tanggal_mulai, item.tanggal_berakhir, filterYearFrom, filterYearTo)
+      (filterMitra === 'all' || item.nama_mitra === filterMitra)
     );
-
     if (sortConfig) {
       items.sort((a, b) => {
         const valA = a[sortConfig.key] ?? '';
@@ -174,7 +101,7 @@ export default function AdminDashboardPage() {
       });
     }
     return items;
-  }, [kerjasamaData, searchTerm, filterStatus, filterNegara, filterJenisDokumen, filterMitra, filterYearFrom, filterYearTo, sortConfig]);
+  }, [kerjasamaData, searchTerm, filterStatus, filterNegara, filterJenisDokumen, filterMitra, sortConfig]);
 
   const filteredAndSortedMitra = useMemo(() => {
     let items = mitraData.filter(item =>
@@ -182,7 +109,6 @@ export default function AdminDashboardPage() {
       (filterMitraNegara === 'all' || item.nama_negara === filterMitraNegara) &&
       (filterJenisPartner === 'all' || item.jenis_partner_nama === filterJenisPartner)
     );
-
     if (mitraSortConfig) {
       items.sort((a, b) => {
         const valA = a[mitraSortConfig.key] ?? 0;
@@ -195,8 +121,7 @@ export default function AdminDashboardPage() {
     return items;
   }, [mitraData, mitraSearchTerm, filterMitraNegara, filterJenisPartner, mitraSortConfig]);
   
-  // Pagination logic
-  useEffect(() => { setCurrentPage(1) }, [searchTerm, filterStatus, filterNegara, filterJenisDokumen, filterMitra, filterYearFrom, filterYearTo]);
+  useEffect(() => { setCurrentPage(1) }, [searchTerm, filterStatus, filterNegara, filterJenisDokumen, filterMitra]);
   useEffect(() => { setMitraCurrentPage(1) }, [mitraSearchTerm, filterMitraNegara, filterJenisPartner]);
 
   const kerjasamapagination = filteredAndSortedKerjasama.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -205,28 +130,20 @@ export default function AdminDashboardPage() {
   const mitrapagination = filteredAndSortedMitra.slice((mitraCurrentPage - 1) * itemsPerPage, mitraCurrentPage * itemsPerPage);
   const mitratotalPages = Math.ceil(filteredAndSortedMitra.length / itemsPerPage);
 
-  // Handlers
   const handleOpenDetailModal = (item: KerjasamaItem | MitraItem, title: string) => { setSelectedItem(item); setModalTitle(title); setIsDetailModalOpen(true); }
   const requestSort = (key: keyof KerjasamaItem) => setSortConfig(prev => ({ key, direction: prev?.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending' }));
   const requestMitraSort = (key: keyof MitraItem) => setMitraSortConfig(prev => ({ key, direction: prev?.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending' }));
-  const handleExportToCSV = () => {
-    const result = exportToCSV(filteredAndSortedKerjasama, "dashboard_kerjasama_data");
-    toast({ title: result.success ? "Berhasil" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
+  const handleExportKerjasama = () => {
+    const result = exportToCSV(filteredAndSortedKerjasama, "data_publik_kerjasama");
+    toast({ title: result.success ? "Berhasil" : "Gagal", description: result.message, variant: result.success ? "default" : "destructive" });
   }
   const handleResetKerjasamaFilters = () => {
-    setSearchTerm("");
-    setFilterMitra("all");
-    setFilterNegara("all");
-    setFilterJenisDokumen("all");
-    setFilterStatus("all");
+    setSearchTerm(""); setFilterMitra("all"); setFilterNegara("all"); setFilterJenisDokumen("all"); setFilterStatus("all");
   };
   const handleResetMitraFilters = () => {
-    setMitraSearchTerm("");
-    setFilterMitraNegara("all");
-    setFilterJenisPartner("all");
+    setMitraSearchTerm(""); setFilterMitraNegara("all"); setFilterJenisPartner("all");
   };
   
-  // Reusable Components
   const SortableHeader = ({ children, sortKey, requestSortFn, config, style }: { children: React.ReactNode, sortKey: any, requestSortFn: any, config: any, style?: React.CSSProperties }) => (
     <TableHead style={style}><Button variant="ghost" onClick={() => requestSortFn(sortKey)}>{children}<ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
   );
@@ -240,62 +157,23 @@ export default function AdminDashboardPage() {
       </Popover>
     );
   };
-  
-  const getYearRangeDescription = () => {
-    if (filterYearFrom === "all" && filterYearTo === "all") return "Semua periode kerjasama";
-    else if (filterYearFrom !== "all" && filterYearTo === "all") return `Kerjasama yang berlangsung dari tahun ${filterYearFrom} ke atas`;
-    else if (filterYearFrom === "all" && filterYearTo !== "all") return `Kerjasama yang berlangsung sampai tahun ${filterYearTo}`;
-    else if (filterYearFrom === filterYearTo) return `Kerjasama yang berlangsung pada tahun ${filterYearFrom}`;
-    else return `Kerjasama yang berlangsung antara tahun ${filterYearFrom} - ${filterYearTo}`;
-  };
 
   if (loading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div></div>
 
   return (
     <DashboardLayout>
-      <div className="flex-1 w-full pr-6">
+      <div className="flex-1 w-full">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Select value={filterYearFrom} onValueChange={setFilterYearFrom}><SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Dari Tahun" /></SelectTrigger><SelectContent><SelectItem value="all">Semua</SelectItem>{availableYears.map((year) => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}</SelectContent></Select>
-              <span className="text-sm text-gray-500 px-1">s/d</span>
-              <Select value={filterYearTo} onValueChange={setFilterYearTo}><SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue placeholder="Sampai Tahun" /></SelectTrigger><SelectContent><SelectItem value="all">Semua</SelectItem>{availableYears.map((year) => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}</SelectContent></Select>
-            </div>
-            <Button onClick={handleExportToCSV} size="sm"><Download className="mr-2 h-4 w-4" />Ekspor Data</Button>
-          </div>
+            <h1 className="text-3xl font-bold tracking-tight">Data Publik</h1>
+            {/* Tombol export akan muncul kondisional berdasarkan tab yang aktif */}
         </div>
-
-        {(filterYearFrom !== "all" || filterYearTo !== "all") && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-600" /><span className="text-sm text-blue-800"><strong>Filter Aktif:</strong> {getYearRangeDescription()}</span>
-            <Button variant="ghost" size="sm" onClick={() => { setFilterYearFrom("all"); setFilterYearTo("all"); }} className="ml-auto text-blue-600 hover:text-blue-800 h-7">Reset Filter</Button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total Mitra" value={mitraData.length.toString()} icon={Users} trend={{ value: "12%", positive: true }}/>
-          <StatCard title="Surat Diproses" value="37" icon={FileText} trend={{ value: "5%", positive: true }} />
-          <StatCard title="Total Pengguna" value="69" icon={Users} trend={{ value: "8%", positive: true }} />
-          <StatCard title="Total Kerjasama" value={filteredAndSortedKerjasama.length.toString()} icon={Database} trend={{ value: "15%", positive: true }} />
-        </div>
-
-        <div className="mt-6"><TrendKerjasamaChart data={kerjasamaTrend} title="Tren Kerjasama per Tahun" description="Menampilkan jumlah kerjasama baru berdasarkan tahun" /></div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 mt-6">
-          <Card className="lg:col-span-4 row-span-5"><CardHeader><CardTitle>Statistik Mitra</CardTitle><CardDescription>Distribusi kerjasama berdasarkan negara {(filterYearFrom !== "all" || filterYearTo !== "all") && <span className="text-blue-600 ml-2">({getYearRangeDescription()})</span>}</CardDescription></CardHeader><CardContent className="pl-2">{loading ? <p>Loading...</p> : <DistributionChart data={negaraStats} />}</CardContent></Card>
-          <Card className="lg:col-span-3"><CardHeader><CardTitle>Aktivitas Terbaru</CardTitle><CardDescription>Aktivitas sistem dalam 24 jam terakhir</CardDescription></CardHeader><CardContent>{/* Konten Aktivitas */}</CardContent></Card>
-        </div>
-
-        <div className="mt-6">
           <Tabs defaultValue="kerjasama" className="w-full">
-            <TabsList className="w-full md:w-auto"><TabsTrigger value="kerjasama">Data Kerjasama</TabsTrigger><TabsTrigger value="mitra">Data Mitra</TabsTrigger><TabsTrigger value="surat">Pengajuan Surat</TabsTrigger></TabsList>
-            
+            <TabsList className="w-full md:w-auto"><TabsTrigger value="kerjasama">Data Kerjasama</TabsTrigger><TabsTrigger value="mitra">Data Mitra</TabsTrigger></TabsList>
             <TabsContent value="kerjasama" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Daftar Kerjasama</CardTitle>
-                  <CardDescription>Daftar semua kerjasama {(filterYearFrom !== "all" || filterYearTo !== "all") && <span className="text-blue-600 ml-2">({getYearRangeDescription()})</span>}</CardDescription>
+                  <CardDescription>Cari dan lihat semua data kerjasama dalam sistem.</CardDescription>
                   <div className="flex flex-wrap items-center gap-2 mt-4">
                     <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" /><Input placeholder="Cari kerjasama..." className="pl-8 h-9 text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                     <SearchableSelect options={uniqueMitra} value={filterMitra} onChange={setFilterMitra} placeholder="Filter Mitra" widthClass="w-full sm:w-[150px]"/>
@@ -303,12 +181,13 @@ export default function AdminDashboardPage() {
                     <Select value={filterJenisDokumen} onValueChange={setFilterJenisDokumen}><SelectTrigger className="w-full sm:w-[120px] h-9 text-xs"><SelectValue placeholder="Jenis Dokumen" /></SelectTrigger><SelectContent><SelectItem value="all">Semua Jenis</SelectItem>{uniqueJenisDokumen.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}</SelectContent></Select>
                     <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-full sm:w-[120px] h-9 text-xs"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">Semua Status</SelectItem><SelectItem value="Aktif">Aktif</SelectItem><SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem><SelectItem value="Draft">Draft</SelectItem><SelectItem value="Berakhir">Berakhir</SelectItem></SelectContent></Select>
                     <Button variant="outline" size="sm" onClick={handleResetKerjasamaFilters}><X className="mr-2 h-4 w-4" /> Reset</Button>
+                    <Button onClick={handleExportKerjasama} size="sm" className="ml-auto"><Download className="mr-2 h-4 w-4" />Ekspor</Button>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-md border"><Table className="table-fixed w-full"><TableHeader><TableRow>
                     <SortableHeader sortKey="judul_kerjasama" config={sortConfig} requestSortFn={requestSort}>Judul</SortableHeader>
-                    <SortableHeader sortKey="nama_mitra" config={mitraSortConfig} requestSortFn={requestSort} style={{width: "20%"}}>Mitra</SortableHeader>
+                    <SortableHeader sortKey="nama_mitra" config={sortConfig} requestSortFn={requestSort} style={{width: "20%"}}>Mitra</SortableHeader>
                     <SortableHeader sortKey="nama_negara" config={sortConfig} requestSortFn={requestSort} style={{width: "10%"}}>Negara</SortableHeader>
                     <SortableHeader sortKey="jenis_dokumen" config={sortConfig} requestSortFn={requestSort} style={{width: "10%"}}>Jenis</SortableHeader>
                     <SortableHeader sortKey="tanggal_mulai" config={sortConfig} requestSortFn={requestSort} style={{width: "10%"}}>Mulai</SortableHeader>
@@ -336,12 +215,11 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-
             <TabsContent value="mitra" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Daftar Mitra</CardTitle>
-                  <CardDescription>Daftar semua Mitra yang terdaftar.</CardDescription>
+                  <CardDescription>Cari dan lihat semua data mitra.</CardDescription>
                   <div className="flex flex-wrap items-center gap-2 mt-4">
                      <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" /><Input placeholder="Cari mitra..." className="pl-8 h-9 text-xs" value={mitraSearchTerm} onChange={(e) => setMitraSearchTerm(e.target.value)} /></div>
                      <SearchableSelect options={uniqueMitraNegara} value={filterMitraNegara} onChange={setFilterMitraNegara} placeholder="Filter Negara" widthClass="w-full sm:w-[150px]"/>
@@ -372,12 +250,7 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-
-            <TabsContent value="surat" className="mt-4">
-              <Card><CardHeader><CardTitle>Daftar Pengajuan Surat</CardTitle><CardDescription>Daftar semua pengajuan surat dalam sistem</CardDescription></CardHeader><CardContent><p>Konten pengajuan surat.</p></CardContent></Card>
-            </TabsContent>
           </Tabs>
-        </div>
       </div>
       
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
