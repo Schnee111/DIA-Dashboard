@@ -115,7 +115,7 @@ export function Sidebar({ role }: SidebarProps) {
 
       <div className="mt-auto p-4">
         {/* Tombol Logout hanya ditampilkan untuk Admin */}
-        {role === 'admin' && (
+        {
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -135,7 +135,7 @@ export function Sidebar({ role }: SidebarProps) {
               {collapsed && <TooltipContent side="right">Logout</TooltipContent>}
             </Tooltip>
           </TooltipProvider>
-        )}
+        }
       </div>
     </div>
   )
