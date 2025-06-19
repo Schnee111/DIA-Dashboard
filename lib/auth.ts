@@ -1,120 +1,112 @@
 import * as bcrypt from "bcrypt"
-import { supabase } from '@/lib/supabaseClient'
-import {
-  User,
-  Role,
-  UserRole,
-  RolePermission,
-  Permission,
-  AuthenticatedUser
-} from '@/lib/types'
+import { supabase } from "@/lib/supabaseClient"
+import type { AuthenticatedUser } from "@/lib/types"
 
 interface RegistrationResult {
-  success: boolean;
-  message: string;
-  user?: AuthenticatedUser;
+  success: boolean
+  message: string
+  user?: AuthenticatedUser
 }
 
 interface AuthResult {
-  success: boolean;
-  message: string;
-  user: AuthenticatedUser | null;
+  success: boolean
+  message: string
+  user: AuthenticatedUser | null
 }
 
 /**
  * Authenticates a user with username and password
  */
-export async function authenticateUser(
-  username: string, 
-  password: string
-): Promise<AuthResult> {
+export async function authenticateUser(username: string, password: string): Promise<AuthResult> {
   try {
     // Find user by username
-    const { data: user, error: userError } = await supabase
-      .from<User>('users')
-      .select('*')
-      .eq('username', username)
-      .single()
+    const { data: user, error: userError } = await supabase.from("users").select("*").eq("username", username).single()
 
     if (userError || !user) {
-      return { 
-        success: false, 
-        message: "Invalid username or password", 
-        user: null 
+      return {
+        success: false,
+        message: "Invalid username or password",
+        user: null,
       }
     }
-    
+
     // Verify password
     const passwordMatch = await bcrypt.compare(password, user.password)
-    
+
     if (!passwordMatch) {
-      return { 
-        success: false, 
-        message: "Invalid username or password", 
-        user: null 
+      return {
+        success: false,
+        message: "Invalid username or password",
+        user: null,
       }
     }
 
     if (user.is_active === false) {
-      return { 
-        success: false, 
-        message: "Account is inactive", 
-        user: null 
+      return {
+        success: false,
+        message: "Account is inactive",
+        user: null,
       }
     }
 
     // Get user roles
     const { data: userRolesData, error: userRolesError } = await supabase
-      .from<UserRole>('user_roles')
-      .select('*')
-      .eq('user_id', user.id)
+      .from("user_roles")
+      .select("*")
+      .eq("user_id", user.id)
 
     if (userRolesError || !userRolesData || userRolesData.length === 0) {
-      return { 
-        success: false, 
-        message: "No roles assigned to user", 
-        user: null 
+      return {
+        success: false,
+        message: "No roles assigned to user",
+        user: null,
       }
     }
 
     // Get role details
     const { data: roleData, error: roleError } = await supabase
-      .from<Role>('roles')
-      .select('*')
-      .eq('id', userRolesData[0].role_id)
+      .from("roles")
+      .select("*")
+      .eq("id", userRolesData[0].role_id)
       .single()
 
     if (roleError || !roleData) {
-      return { 
-        success: false, 
-        message: "Role information not found", 
-        user: null 
+      return {
+        success: false,
+        message: "Role information not found",
+        user: null,
       }
     }
 
     // Get permissions for this role
     const { data: rolePermissions, error: permissionsError } = await supabase
-      .from('role_permissions')
+      .from("role_permissions")
       .select(`
         *,
         permission:permission_id (
           name
         )
       `)
-      .eq('role_id', roleData.id)
+      .eq("role_id", roleData.id)
 
     if (permissionsError) {
-      return { 
-        success: false, 
-        message: "Error fetching permissions", 
-        user: null 
+      return {
+        success: false,
+        message: "Error fetching permissions",
+        user: null,
       }
     }
 
     // Extract permission names
     const permissionList = (rolePermissions || [])
-      .map(rp => rp.permission?.name)
-      .filter((name): name is string => !!name)
+      .map((rp) => {
+        // Handle the nested permission structure properly
+        if (rp.permission && typeof rp.permission === "object" && "name" in rp.permission) {
+          return rp.permission.name
+        }
+        return null
+      })
+      .filter((name): name is string => name !== null && typeof name === "string")
 
     const authenticatedUser: AuthenticatedUser = {
       id: user.id,
@@ -124,20 +116,20 @@ export async function authenticateUser(
       role: roleData.name,
       permissions: permissionList,
       profilePicture: user.profile_picture,
-      isActive: user.is_active !== false
+      isActive: user.is_active !== false,
     }
 
     return {
       success: true,
       message: "Authentication successful",
-      user: authenticatedUser
+      user: authenticatedUser,
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
-    return { 
-      success: false, 
-      message: `Authentication error: ${errorMessage}`, 
-      user: null 
+    return {
+      success: false,
+      message: `Authentication error: ${errorMessage}`,
+      user: null,
     }
   }
 }
@@ -146,30 +138,30 @@ export async function authenticateUser(
  * Registers a new user with default guest role
  */
 export async function registerUser(
-  name: string, 
-  email: string, 
-  username: string, 
-  password: string
+  name: string,
+  email: string,
+  username: string,
+  password: string,
 ): Promise<RegistrationResult> {
   try {
     // Validate inputs
     if (!name || !email || !username || !password) {
       return { success: false, message: "All fields are required" }
     }
-    
+
     if (password.length < 8) {
       return { success: false, message: "Password must be at least 8 characters" }
     }
-    
-    if (!email.includes('@') || !email.includes('.')) {
+
+    if (!email.includes("@") || !email.includes(".")) {
       return { success: false, message: "Invalid email format" }
     }
 
     // Check if username exists
     const { data: existingUserByUsername, error: usernameError } = await supabase
-      .from<User>('users')
-      .select('*')
-      .eq('username', username)
+      .from("users")
+      .select("*")
+      .eq("username", username)
       .maybeSingle()
 
     if (usernameError) {
@@ -182,9 +174,9 @@ export async function registerUser(
 
     // Check if email exists
     const { data: existingUserByEmail, error: emailError } = await supabase
-      .from<User>('users')
-      .select('*')
-      .eq('email', email)
+      .from("users")
+      .select("*")
+      .eq("email", email)
       .maybeSingle()
 
     if (emailError) {
@@ -201,7 +193,7 @@ export async function registerUser(
 
     // Create new user
     const { data: newUser, error: insertError } = await supabase
-      .from<User>('users')
+      .from("users")
       .insert([
         {
           id: userId,
@@ -209,8 +201,8 @@ export async function registerUser(
           email,
           username,
           password: hashedPassword,
-          is_active: true
-        }
+          is_active: true,
+        },
       ])
       .select()
 
@@ -219,26 +211,20 @@ export async function registerUser(
     }
 
     // Find guest role
-    const { data: guestRole, error: roleError } = await supabase
-      .from<Role>('roles')
-      .select('*')
-      .eq('name', 'guest')
-      .single()
+    const { data: guestRole, error: roleError } = await supabase.from("roles").select("*").eq("name", "guest").single()
 
     if (roleError || !guestRole) {
       return { success: false, message: "Guest role not found" }
     }
 
     // Assign guest role to new user
-    const { error: userRoleError } = await supabase
-      .from<UserRole>('user_roles')
-      .insert([
-        {
-          id: crypto.randomUUID(),
-          user_id: userId,
-          role_id: guestRole.id,
-        }
-      ])
+    const { error: userRoleError } = await supabase.from("user_roles").insert([
+      {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        role_id: guestRole.id,
+      },
+    ])
 
     if (userRoleError) {
       return { success: false, message: "Failed to assign role to user" }
@@ -246,21 +232,21 @@ export async function registerUser(
 
     // Get the user's permissions
     const permissions = await getUserPermissions(userId)
-    
+
     const newAuthUser: AuthenticatedUser = {
       id: userId,
       name,
       email,
       username,
-      role: 'guest',
+      role: "guest",
       permissions,
-      isActive: true
+      isActive: true,
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: "Registration successful",
-      user: newAuthUser
+      user: newAuthUser,
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
@@ -274,11 +260,7 @@ export async function registerUser(
 export async function getUserPermissions(userId: string): Promise<string[]> {
   try {
     // Check if user is active
-    const { data: user, error: userError } = await supabase
-      .from<Pick<User, 'is_active'>>('users')
-      .select('is_active')
-      .eq('id', userId)
-      .single()
+    const { data: user, error: userError } = await supabase.from("users").select("is_active").eq("id", userId).single()
 
     if (userError || !user) {
       return []
@@ -290,27 +272,27 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
 
     // Get user roles
     const { data: userRoles, error: userRolesError } = await supabase
-      .from<Pick<UserRole, 'role_id'>>('user_roles')
-      .select('role_id')
-      .eq('user_id', userId)
+      .from("user_roles")
+      .select("role_id")
+      .eq("user_id", userId)
 
     if (userRolesError || !userRoles || userRoles.length === 0) {
       return []
     }
 
     // Collect all role IDs
-    const roleIds = userRoles.map(ur => ur.role_id)
+    const roleIds = userRoles.map((ur) => ur.role_id)
 
     // Get all permissions for these roles
     const { data: rolePermissions, error: permissionsError } = await supabase
-      .from('role_permissions')
+      .from("role_permissions")
       .select(`
         permission_id,
         permission:permission_id (
           name
         )
       `)
-      .in('role_id', roleIds)
+      .in("role_id", roleIds)
 
     if (permissionsError || !rolePermissions) {
       return []
@@ -318,8 +300,13 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
 
     // Extract and deduplicate permission names
     const permissionList = rolePermissions
-      .map(rp => rp.permission?.name)
-      .filter((name): name is string => !!name)
+      .map((rp) => {
+        if (rp.permission && typeof rp.permission === "object" && "name" in rp.permission) {
+          return rp.permission.name
+        }
+        return null
+      })
+      .filter((name): name is string => name !== null && typeof name === "string")
 
     return [...new Set(permissionList)]
   } catch (error) {
@@ -340,5 +327,5 @@ export async function hasPermission(userId: string, permissionName: string): Pro
  */
 export async function hasAnyPermission(userId: string, permissionNames: string[]): Promise<boolean> {
   const permissions = await getUserPermissions(userId)
-  return permissionNames.some(perm => permissions.includes(perm))
+  return permissionNames.some((perm) => permissions.includes(perm))
 }
