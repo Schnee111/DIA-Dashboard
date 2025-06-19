@@ -41,6 +41,7 @@ interface MitraItem {
   nama_negara: string
   alamat: string
   jenis_partner_nama: string
+  jumlah_kerjasama?: number
   [key: string]: any
 }
 
@@ -506,6 +507,7 @@ export default function AdminDashboardPage() {
                               <TableHead>Nama</TableHead>
                               <TableHead>Negara</TableHead>
                               <TableHead>Jenis Partner</TableHead>
+                              <TableHead>Jumlah Kerjasama</TableHead> 
                               <TableHead>Alamat</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -516,6 +518,7 @@ export default function AdminDashboardPage() {
                                   <TableCell className="font-medium">{mitra.nama_mitra}</TableCell>
                                   <TableCell>{mitra.nama_negara}</TableCell>
                                   <TableCell>{mitra.jenis_partner_nama}</TableCell>
+                                  <TableCell>{mitra.jumlah_kerjasama}</TableCell>
                                   <TableCell className="max-w-xs truncate">{mitra.alamat}</TableCell>
                                 </TableRow>
                               ))

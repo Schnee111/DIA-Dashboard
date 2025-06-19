@@ -64,6 +64,7 @@ interface MitraItem {
   jenis_partner_nama: string
   negara_id?: number
   jenis_partner_id?: number
+  jumlah_kerjasama?: number
   [key: string]: any
 }
 
