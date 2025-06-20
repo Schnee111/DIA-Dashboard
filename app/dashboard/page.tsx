@@ -4,9 +4,11 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, Users, Database, Download, Calendar } from "lucide-react"
+import { FileText, Users, Database, Download, Calendar, Globe, Activity, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
 import DistributionChart from "@/components/dashboard/country-distribution-chart"
+import { StatusDistributionChart } from "@/components/dashboard/status-distribution-chart"
+import { DocumentTypeChart } from "@/components/dashboard/document-type-chart"
 import {
   fetchDashboardData,
   extractYearsFromDates,
@@ -26,12 +28,17 @@ export default function PublicDashboardPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [kerjasamaCount, setKerjasamaCount] = useState(0)
   const [mitraCount, setMitraCount] = useState(0)
+  const [activeCooperationCount, setActiveCooperationCount] = useState(0)
+  const [uniqueCountriesCount, setUniqueCountriesCount] = useState(0)
+  const [expiringCount, setExpiringCount] = useState(0)
   const [negaraStats, setNegaraStats] = useState<ChartDataItem[]>([])
+  const [jenisStats, setJenisStats] = useState<ChartDataItem[]>([])
+  const [statusStats, setStatusStats] = useState<ChartDataItem[]>([])
+  const [monthlyTrend, setMonthlyTrend] = useState<{ month: string, value: number }[]>([])
   const [kerjasamaTrend, setKerjasamaTrend] = useState<TrendChartData[]>([])
   const [filterYearFrom, setFilterYearFrom] = useState("all")
   const [filterYearTo, setFilterYearTo] = useState("all")
   const [availableYears, setAvailableYears] = useState<number[]>([])
-
   useEffect(() => {
     const loadDashboardData = async () => {
       setLoading(true)
@@ -39,7 +46,12 @@ export default function PublicDashboardPage() {
         const data = await fetchDashboardData(filterYearFrom, filterYearTo)
         setKerjasamaCount(data.kerjasamaData.length)
         setMitraCount(data.mitraData.length)
+        setActiveCooperationCount(data.activeCooperationCount)
+        setUniqueCountriesCount(data.uniqueCountriesCount)
+        setExpiringCount(data.expiringCooperation.length)
         setNegaraStats(data.negaraStats)
+        setJenisStats(data.jenisStats)
+        setStatusStats(data.statusStats)
         setKerjasamaTrend(data.kerjasamaTrend)
 
         if (filterYearFrom === 'all' && filterYearTo === 'all') {
@@ -85,18 +97,57 @@ export default function PublicDashboardPage() {
             <Calendar className="h-4 w-4 text-blue-600" /><span className="text-sm text-blue-800"><strong>Filter Aktif:</strong> {getYearRangeDescription()}</span>
             <Button variant="ghost" size="sm" onClick={() => { setFilterYearFrom("all"); setFilterYearTo("all"); }} className="ml-auto text-blue-600 hover:text-blue-800 h-7">Reset Filter</Button>
           </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        )}        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Total Mitra" value={mitraCount.toString()} icon={Users} />
           <StatCard title="Total Kerjasama" value={kerjasamaCount.toString()} icon={Database} />
-          <StatCard title="Surat Diproses" value="-" icon={FileText} description="Data tidak tersedia" />
-          <StatCard title="Total Pengguna" value="-" icon={Users} description="Data tidak tersedia" />
+          <StatCard 
+            title="Kerjasama Aktif" 
+            value={activeCooperationCount.toString()} 
+            icon={Activity} 
+            variant="success"
+            description="Kerjasama yang sedang berjalan"
+          />
+          <StatCard 
+            title="Negara Bekerjasama" 
+            value={uniqueCountriesCount.toString()} 
+            icon={Globe} 
+            description="Jumlah negara yang terlibat"
+          />
         </div>
 
-        <div className="mt-6"><TrendKerjasamaChart data={kerjasamaTrend} title="Tren Kerjasama per Tahun" description="Menampilkan jumlah kerjasama baru berdasarkan tahun" /></div>
+        {expiringCount > 0 && (
+          <div className="mt-4">
+            <StatCard 
+              title="Kerjasama Akan Berakhir" 
+              value={expiringCount.toString()} 
+              icon={AlertTriangle} 
+              variant="warning"
+              description="Berakhir dalam 3 bulan ke depan"
+            />
+          </div>
+        )}        <div className="mt-6"><TrendKerjasamaChart data={kerjasamaTrend} title="Tren Kerjasama per Tahun" description="Menampilkan jumlah kerjasama baru berdasarkan tahun" /></div>
         
-        <div className="mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribusi Status Kerjasama</CardTitle>
+              <CardDescription>Pembagian kerjasama berdasarkan status {(filterYearFrom !== "all" || filterYearTo !== "all") && <span className="text-blue-600 ml-2">({getYearRangeDescription()})</span>}</CardDescription>
+            </CardHeader>
+            <CardContent className="pl-2">
+              {loading ? <div className="h-64 flex items-center justify-center"><p>Memuat chart...</p></div> : <StatusDistributionChart data={statusStats} />}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribusi Jenis Dokumen</CardTitle>
+              <CardDescription>Pembagian kerjasama berdasarkan jenis dokumen {(filterYearFrom !== "all" || filterYearTo !== "all") && <span className="text-blue-600 ml-2">({getYearRangeDescription()})</span>}</CardDescription>
+            </CardHeader>
+            <CardContent className="pl-2">
+              {loading ? <div className="h-64 flex items-center justify-center"><p>Memuat chart...</p></div> : <DocumentTypeChart data={jenisStats} />}
+            </CardContent>
+          </Card>
+        </div>        <div className="mt-6">
           <Card>
             <CardHeader>
                 <CardTitle>Statistik Mitra</CardTitle>

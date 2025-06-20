@@ -87,6 +87,10 @@ interface DashboardData {
   negaraStats: ChartDataItem[]
   jenisStats: ChartDataItem[]
   kerjasamaTrend: TrendChartData[]
+  statusStats: ChartDataItem[]
+  activeCooperationCount: number
+  uniqueCountriesCount: number
+  expiringCooperation: KerjasamaItem[]
 }
 
 // ============= BASIC DATA FETCHING =============
@@ -897,6 +901,101 @@ export function calculatePercentages(chartData: ChartDataItem[]): ChartDataItem[
 }
 
 /**
+ * Count active cooperation agreements
+ */
+export function countActiveCooperation(kerjasamaData: KerjasamaItem[]): number {
+  return kerjasamaData.filter((item) => item.status === "Aktif").length
+}
+
+/**
+ * Count unique countries with cooperation
+ */
+export function countUniqueCountries(kerjasamaData: KerjasamaItem[]): number {
+  const uniqueCountries = new Set(kerjasamaData.map((item) => item.nama_negara).filter(Boolean))
+  return uniqueCountries.size
+}
+
+/**
+ * Process cooperation status distribution
+ */
+export function processStatusDistribution(kerjasamaData: KerjasamaItem[]): ChartDataItem[] {
+  const statusGrouped: Record<string, number> = {}
+
+  kerjasamaData.forEach((item) => {
+    const status = item.status || "Draft"
+    if (statusGrouped[status]) {
+      statusGrouped[status]++
+    } else {
+      statusGrouped[status] = 1
+    }
+  })
+
+  return Object.keys(statusGrouped).map((key) => ({
+    name: key,
+    value: statusGrouped[key],
+  }))
+}
+
+/**
+ * Process cooperation data by end date to find expiring soon
+ */
+export function processExpiringCooperation(kerjasamaData: KerjasamaItem[]): KerjasamaItem[] {
+  const currentDate = new Date()
+  const threeMonthsFromNow = new Date()
+  threeMonthsFromNow.setMonth(currentDate.getMonth() + 3)
+
+  return kerjasamaData.filter((item) => {
+    if (!item.tanggal_berakhir || item.status !== "Aktif") return false
+
+    const endDate = new Date(item.tanggal_berakhir)
+    return endDate >= currentDate && endDate <= threeMonthsFromNow
+  })
+}
+
+/**
+ * Process monthly cooperation trends for current year
+ */
+export function processMonthlyTrend(kerjasamaData: KerjasamaItem[]): { month: string; value: number }[] {
+  const currentYear = new Date().getFullYear()
+  const monthlyData: Record<string, number> = {}
+
+  // Initialize all months
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ]
+
+  months.forEach((month) => {
+    monthlyData[month] = 0
+  })
+
+  kerjasamaData.forEach((item) => {
+    if (item.tanggal_mulai) {
+      const startDate = new Date(item.tanggal_mulai)
+      if (startDate.getFullYear() === currentYear) {
+        const month = months[startDate.getMonth()]
+        monthlyData[month]++
+      }
+    }
+  })
+
+  return months.map((month) => ({
+    month,
+    value: monthlyData[month],
+  }))
+}
+
+/**
  * Fetch all required dashboard data with optional year filtering
  */
 export async function fetchDashboardData(fromYear?: string, toYear?: string): Promise<DashboardData> {
@@ -915,7 +1014,11 @@ export async function fetchDashboardData(fromYear?: string, toYear?: string): Pr
 
     // Process data for charts
     const { negaraStats, jenisStats } = processChartData(filteredKerjasama)
-    const kerjasamaTrend = processKerjasamaTrend(filteredKerjasama) // Proses data tren
+    const kerjasamaTrend = processKerjasamaTrend(filteredKerjasama)
+    const statusStats = processStatusDistribution(filteredKerjasama)
+    const activeCooperationCount = countActiveCooperation(filteredKerjasama)
+    const uniqueCountriesCount = countUniqueCountries(filteredKerjasama)
+    const expiringCooperation = processExpiringCooperation(filteredKerjasama)
 
     // Convert to percentages for pie charts
     const negaraPercentages = calculatePercentages(negaraStats)
@@ -927,6 +1030,10 @@ export async function fetchDashboardData(fromYear?: string, toYear?: string): Pr
       negaraStats: negaraPercentages,
       jenisStats: jenisPercentages,
       kerjasamaTrend: kerjasamaTrend,
+      statusStats: statusStats,
+      activeCooperationCount: activeCooperationCount,
+      uniqueCountriesCount: uniqueCountriesCount,
+      expiringCooperation: expiringCooperation,
     }
   } catch (error) {
     console.error("Error fetching dashboard data:", error)
