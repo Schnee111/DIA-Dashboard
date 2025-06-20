@@ -390,6 +390,7 @@ export async function createKerjasama(kerjasamaData: Partial<KerjasamaItem>): Pr
       catatan: kerjasamaData.catatan || null,
       jumlah_pihak: kerjasamaData.jumlah_pihak || 2,
       output_kerjasama: kerjasamaData.output_kerjasama || null,
+      link_dokumen: kerjasamaData.link_dokumen || null,
       tgl_input: kerjasamaData.tgl_input || new Date().toISOString().split("T")[0],
       tgl_lapor: kerjasamaData.tgl_lapor || null,
       status_lapor: kerjasamaData.status_lapor || "Belum",
@@ -444,6 +445,7 @@ export async function updateKerjasama(id: number, kerjasamaData: Partial<Kerjasa
       catatan: kerjasamaData.catatan || null,
       jumlah_pihak: kerjasamaData.jumlah_pihak,
       output_kerjasama: kerjasamaData.output_kerjasama || null,
+      link_dokumen: kerjasamaData.link_dokumen || null,
       tgl_input: kerjasamaData.tgl_input || null,
       tgl_lapor: kerjasamaData.tgl_lapor || null,
       status_lapor: kerjasamaData.status_lapor,
@@ -453,7 +455,7 @@ export async function updateKerjasama(id: number, kerjasamaData: Partial<Kerjasa
       jenis_dok_id: kerjasamaData.jenis_dok_id || null,
       pj_upi: kerjasamaData.pj_upi || null,
       pj_mitra: kerjasamaData.pj_mitra || null,
-      penandatangan_upi: kerjasamaData.penandatangan_mitra || null,
+      penandatangan_upi: kerjasamaData.penandatangan_upi || null,
       penandatangan_mitra: kerjasamaData.penandatangan_mitra || null,
     }
 
@@ -960,20 +962,7 @@ export function processMonthlyTrend(kerjasamaData: KerjasamaItem[]): { month: st
   const monthlyData: Record<string, number> = {}
 
   // Initialize all months
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ]
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
   months.forEach((month) => {
     monthlyData[month] = 0

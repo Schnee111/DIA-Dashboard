@@ -230,6 +230,14 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
 
     // Additional Information Section
     {
+      name: "link_dokumen",
+      label: "Link Dokumen",
+      type: "text",
+      placeholder: "Masukkan link dokumen (URL)",
+      section: "Informasi Tambahan",
+      className: "md:col-span-2",
+    },
+    {
       name: "output_kerjasama",
       label: "Output Kerjasama",
       type: "textarea",
@@ -349,12 +357,24 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
       render: (value: string) => (value ? new Date(value).toLocaleDateString("id-ID") : "-"),
     },
     { key: "status_lapor", label: "Status Lapor" },
+    {
+      key: "link_dokumen",
+      label: "Link Dokumen",
+      fullWidth: true,
+      render: (value: string) =>
+        value ? (
+          <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            {value}
+          </a>
+        ) : (
+          "-"
+        ),
+    },
     { key: "catatan", label: "Catatan", fullWidth: true },
     { key: "output_kerjasama", label: "Output Kerjasama", fullWidth: true },
   ]
 
   const handleEdit = (item: any) => {
-
     formHandlers.setSelectedKerjasama(item)
 
     // Find mitra_id by nama_mitra
@@ -378,7 +398,6 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
     const foundPenandatanganMitra = personelData.find((personel) => personel.nama === item.nama_penandatangan_mitra)
     const penandatanganMitraId = foundPenandatanganMitra ? foundPenandatanganMitra.personel_id : undefined
 
-    
     // Set ALL fields dengan data lengkap
     const formData = {
       no_dokumen: item.no_dokumen || "",
@@ -390,6 +409,7 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
       catatan: item.catatan || "",
       jumlah_pihak: item.jumlah_pihak || 2,
       output_kerjasama: item.output_kerjasama || "",
+      link_dokumen: item.link_dokumen || "",
       tgl_input: item.tgl_input || "",
       tgl_lapor: item.tgl_lapor || "",
       status_lapor: item.status_lapor || "Belum",

@@ -29,6 +29,7 @@ export interface KerjasamaData {
   status_lapor?: string
   catatan?: string
   output_kerjasama?: string
+  link_dokumen?: string
   mitra_id?: number
   jenis_dok_id?: number
   jenis_dokumen: string
