@@ -172,7 +172,9 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
         throw new Error("Nama mitra wajib diisi")
       }
 
+      console.log("🚀 Creating mitra with data:", formData)
       const createdMitra = await createMitra(formData)
+      console.log("✅ Mitra created successfully:", createdMitra)
 
       // Refresh data first
       if (refreshData) {
@@ -187,22 +189,23 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
         setTimeout(() => {
           autoSelectNewItem("mitra", "mitra_id", createdMitra.mitra_id)
           setPendingAutoSelect(null)
-        }, 1000) // Increased delay to ensure data is refreshed
+        }, 1000)
       }
 
+      console.log("🎉 Showing success toast for mitra")
       toast({
         title: "✅ Mitra Berhasil Ditambahkan",
         description: `Mitra "${createdMitra.nama_mitra}" telah berhasil ditambahkan ke sistem dan siap digunakan.`,
         variant: "default",
-        duration: 4000,
+        duration: 5000,
       })
     } catch (error: any) {
-      console.error("Error adding mitra:", error)
+      console.error("❌ Error adding mitra:", error)
       toast({
         title: "❌ Gagal Menambahkan Mitra",
         description: error.message || "Terjadi kesalahan saat menambahkan mitra. Silakan coba lagi.",
         variant: "destructive",
-        duration: 5000,
+        duration: 6000,
       })
       throw error
     } finally {
@@ -275,7 +278,7 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
   const handleAddKerjasama = async () => {
     try {
       const formData = getFormData(kerjasamaFormRef)
-      console.log("Submitting kerjasama data:", formData)
+      console.log("🚀 Creating kerjasama with data:", formData)
 
       // Validate required fields
       if (!formData.judul_kerjasama || formData.judul_kerjasama.trim() === "") {
@@ -286,24 +289,27 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       }
 
       const createdKerjasama = await createKerjasama(formData)
+      console.log("✅ Kerjasama created successfully:", createdKerjasama)
+
       if (refreshData) refreshData()
       setIsAddKerjasamaOpen(false)
       kerjasamaFormRef.current?.reset()
-      setSearchableSelectKey((prev) => prev + 1) // Reset searchable selects
+      setSearchableSelectKey((prev) => prev + 1)
 
+      console.log("🎉 Showing success toast for kerjasama")
       toast({
         title: "✅ Kerjasama Berhasil Ditambahkan",
         description: `Kerjasama "${createdKerjasama.judul_kerjasama}" telah berhasil ditambahkan ke sistem.`,
         variant: "default",
-        duration: 4000,
+        duration: 5000,
       })
     } catch (error: any) {
-      console.error("Error in handleAddKerjasama:", error)
+      console.error("❌ Error in handleAddKerjasama:", error)
       toast({
         title: "❌ Gagal Menambahkan Kerjasama",
         description: error.message || "Terjadi kesalahan saat menambahkan data kerjasama. Silakan coba lagi.",
         variant: "destructive",
-        duration: 5000,
+        duration: 6000,
       })
       throw error
     }
