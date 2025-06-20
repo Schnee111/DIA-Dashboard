@@ -36,8 +36,12 @@ export function useDataFetch() {
   const [uniqueJenisDokumen, setUniqueJenisDokumen] = useState<string[]>([])
   const [availableYears, setAvailableYears] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   const loadData = useCallback(async () => {
+    // Prevent multiple simultaneous loads
+    if (dataLoaded) return
+
     setLoading(true)
     try {
       const [
@@ -85,6 +89,7 @@ export function useDataFetch() {
 
       const years = extractYearsFromDates(allDates)
       setAvailableYears(years)
+      setDataLoaded(true)
     } catch (error) {
       console.error("Error loading data:", error)
       toast({
@@ -95,13 +100,16 @@ export function useDataFetch() {
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, dataLoaded])
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    if (!dataLoaded) {
+      loadData()
+    }
+  }, [loadData, dataLoaded])
 
   const refreshData = useCallback(() => {
+    setDataLoaded(false)
     loadData()
   }, [loadData])
 

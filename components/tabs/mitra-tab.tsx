@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
@@ -59,48 +59,51 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
   }, [searchTerm, filterJenisPartner, filterNegara])
 
   // Define form fields
-  const mitraFields: Field[] = [
-    {
-      name: "nama_mitra",
-      label: "Nama Mitra",
-      type: "text",
-      placeholder: "Masukkan nama mitra",
-      section: "Informasi Dasar",
-      required: true,
-    },
-    {
-      name: "negara_id",
-      label: "Negara",
-      type: "select",
-      placeholder: "Pilih negara",
-      section: "Informasi Dasar",
-      options: negaraData.map((negara) => ({
-        value: negara.negara_id.toString(),
-        label: negara.nama_negara,
-      })),
-      required: true,
-    },
-    {
-      name: "jenis_partner_id",
-      label: "Jenis Partner",
-      type: "select",
-      placeholder: "Pilih jenis partner",
-      section: "Informasi Dasar",
-      options: jenisPartnerData.map((jenis) => ({
-        value: jenis.jenis_partner_id.toString(),
-        label: jenis.nama_jenis,
-      })),
-      required: true,
-    },
-    {
-      name: "alamat",
-      label: "Alamat",
-      type: "textarea",
-      placeholder: "Masukkan alamat lengkap",
-      section: "Informasi Dasar",
-      className: "md:col-span-2",
-    },
-  ]
+  const mitraFields: Field[] = useMemo(
+    () => [
+      {
+        name: "nama_mitra",
+        label: "Nama Mitra",
+        type: "text",
+        placeholder: "Masukkan nama mitra",
+        section: "Informasi Dasar",
+        required: true,
+      },
+      {
+        name: "negara_id",
+        label: "Negara",
+        type: "select",
+        placeholder: "Pilih negara",
+        section: "Informasi Dasar",
+        options: negaraData.map((negara) => ({
+          value: negara.negara_id.toString(),
+          label: negara.nama_negara,
+        })),
+        required: true,
+      },
+      {
+        name: "jenis_partner_id",
+        label: "Jenis Partner",
+        type: "select",
+        placeholder: "Pilih jenis partner",
+        section: "Informasi Dasar",
+        options: jenisPartnerData.map((jenis) => ({
+          value: jenis.jenis_partner_id.toString(),
+          label: jenis.nama_jenis,
+        })),
+        required: true,
+      },
+      {
+        name: "alamat",
+        label: "Alamat",
+        type: "textarea",
+        placeholder: "Masukkan alamat lengkap",
+        section: "Informasi Dasar",
+        className: "md:col-span-2",
+      },
+    ],
+    [negaraData, jenisPartnerData],
+  )
 
   // Define table columns
   const columns = [
@@ -118,55 +121,37 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
     { key: "alamat", label: "Alamat", fullWidth: true },
   ]
 
-  const handleEdit = (item: any) => {
+  const handleEdit = useCallback(
+    (item: any) => {
+      formHandlers.prepareEditMitra(item, mitraData, negaraData, jenisPartnerData)
+    },
+    [formHandlers, mitraData, negaraData, jenisPartnerData],
+  )
 
-    // MAPPING: Cari ID berdasarkan nama
-    const negaraId = negaraData.find((negara) => negara.nama_negara === item.nama_negara)?.negara_id
-    const jenisPartnerId = jenisPartnerData.find(
-      (jenis) => jenis.nama_jenis === item.jenis_partner_nama,
-    )?.jenis_partner_id
+  const handleView = useCallback(
+    (item: any) => {
+      formHandlers.setSelectedMitra(item)
+      formHandlers.setIsViewMitraOpen(true)
+    },
+    [formHandlers],
+  )
 
-    console.log("🔍 ID Mapping:", {
-      nama_negara: item.nama_negara,
-      found_negara_id: negaraId,
-      jenis_partner_nama: item.jenis_partner_nama,
-      found_jenis_partner_id: jenisPartnerId,
-    })
+  const handleDelete = useCallback(
+    (item: any) => {
+      formHandlers.setSelectedMitra(item)
+      formHandlers.setIsDeleteMitraOpen(true)
+    },
+    [formHandlers],
+  )
 
-    formHandlers.setSelectedMitra(item)
-
-    // PENTING: Untuk form state, kita tetap pakai string (karena form input expect string)
-    // Tapi untuk type compatibility, kita buat object yang match MitraData
-    const formData = {
-      nama_mitra: item.nama_mitra || "",
-      alamat: item.alamat || "",
-      // Convert ke number untuk type compatibility, tapi form akan handle sebagai string
-      negara_id: negaraId || undefined,
-      jenis_partner_id: jenisPartnerId || undefined,
-    }
-
-    formHandlers.setNewMitra(formData)
-    formHandlers.setIsEditMitraOpen(true)
-  }
-
-  const handleView = (item: any) => {
-    formHandlers.setSelectedMitra(item)
-    formHandlers.setIsViewMitraOpen(true)
-  }
-
-  const handleDelete = (item: any) => {
-    formHandlers.setSelectedMitra(item)
-    formHandlers.setIsDeleteMitraOpen(true)
-  }
-
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     const result = exportToCSV(filteredData, "mitra_data")
     toast({
       title: result.success ? "✅ Berhasil" : "❌ Error",
       description: result.message,
       variant: result.success ? "default" : "destructive",
     })
-  }
+  }, [filteredData, toast])
 
   return (
     <Card>
@@ -281,13 +266,11 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
         title="Tambah Mitra Baru"
         description="Isi form berikut untuk menambahkan mitra baru ke dalam sistem"
         fields={mitraFields}
-        values={formHandlers.newMitra}
-        onChange={formHandlers.handleInputChange}
-        onSelectChange={formHandlers.handleSelectChange}
         onSubmit={formHandlers.handleAddMitra}
         open={formHandlers.isAddMitraOpen}
         onOpenChange={formHandlers.setIsAddMitraOpen}
         formType="mitra"
+        formRef={formHandlers.mitraFormRef}
       />
 
       {/* Edit Dialog */}
@@ -295,13 +278,12 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
         title="Edit Mitra"
         description="Edit informasi mitra dalam sistem"
         fields={mitraFields}
-        values={formHandlers.newMitra}
-        onChange={formHandlers.handleInputChange}
-        onSelectChange={formHandlers.handleSelectChange}
+        editData={formHandlers.editMitraData}
         onSubmit={formHandlers.handleEditMitra}
         open={formHandlers.isEditMitraOpen}
         onOpenChange={formHandlers.setIsEditMitraOpen}
         formType="mitra"
+        formRef={formHandlers.mitraFormRef}
       />
 
       {/* View Dialog */}

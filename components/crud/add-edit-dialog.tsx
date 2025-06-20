@@ -1,13 +1,9 @@
 "use client"
 
 import type React from "react"
-
-// components/dashboard/add-edit-dialog.tsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SearchableSelect } from "@/components/crud/searchable-select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import type { Field } from "@/types"
@@ -18,29 +14,24 @@ interface AddEditDialogProps {
   title: string
   description: string
   fields: Field[]
-  values: { [key: string]: any }
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-    formType?: "mitra" | "kerjasama" | "personel" | "jabatan",
-  ) => void
-  onSelectChange: (name: string, value: string, formType?: "mitra" | "kerjasama" | "personel" | "jabatan") => void
+  editData?: { [key: string]: any }
   onSubmit: () => void
   open: boolean
   onOpenChange: (open: boolean) => void
   formType?: "mitra" | "kerjasama" | "personel" | "jabatan"
+  formRef: React.RefObject<HTMLFormElement | null>
 }
 
 export function AddEditDialog({
   title,
   description,
   fields,
-  values,
-  onChange,
-  onSelectChange,
+  editData = {},
   onSubmit,
   open,
   onOpenChange,
   formType = "mitra",
+  formRef,
 }: AddEditDialogProps) {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -51,34 +42,51 @@ export function AddEditDialog({
     if (open) {
       setError("")
       setShowSuccess(false)
+    } else {
+      // Reset form when closing
+      formRef.current?.reset()
     }
-  }, [open])
+  }, [open, formRef])
 
-  // Update debugSelectValue function:
-  const debugSelectValue = (fieldName: string, value: any, options: any[]) => {
-    console.log(`🔍 Debug ${fieldName}:`, {
-      value,
-      valueType: typeof value,
-      valueString: value?.toString(),
-      optionsCount: options?.length || 0,
-      firstFewOptions: options?.slice(0, 3).map((opt) => ({
-        value: opt.value,
-        valueType: typeof opt.value,
-        valueString: opt.value?.toString(),
-        label: opt.label,
-      })),
-      hasExactMatch: options?.some((opt) => opt.value === value),
-      hasStringMatch: options?.some((opt) => opt.value.toString() === value?.toString()),
-    })
-  }
+  // Set default values for edit mode
+  useEffect(() => {
+    if (open && Object.keys(editData).length > 0 && formRef.current) {
+      // Small delay to ensure form is rendered
+      setTimeout(() => {
+        Object.entries(editData).forEach(([key, value]) => {
+          const input = formRef.current?.querySelector(`[name="${key}"]`) as
+            | HTMLInputElement
+            | HTMLSelectElement
+            | HTMLTextAreaElement
+          if (input && value !== null && value !== undefined) {
+            input.value = value.toString()
 
-  // Simple validation - hanya saat submit
+            // Trigger change event for select components
+            if (input.tagName === "SELECT") {
+              input.dispatchEvent(new Event("change", { bubbles: true }))
+            }
+          }
+        })
+      }, 100)
+    }
+  }, [open, editData, formRef])
+
   const validateAndSubmit = async () => {
+    if (!formRef.current) return
+
+    // Get form data
+    const formData = new FormData(formRef.current)
+    const data: { [key: string]: any } = {}
+
+    for (const [key, value] of formData.entries()) {
+      data[key] = value
+    }
+
     // Check required fields
     const missingFields = fields
       .filter((field) => field.required)
       .filter((field) => {
-        const value = values[field.name]
+        const value = data[field.name]
         return !value || (typeof value === "string" && value.trim() === "")
       })
       .map((field) => field.label)
@@ -89,8 +97,8 @@ export function AddEditDialog({
     }
 
     // Date validation
-    if (values.tanggal_mulai && values.tanggal_berakhir) {
-      if (new Date(values.tanggal_mulai) >= new Date(values.tanggal_berakhir)) {
+    if (data.tanggal_mulai && data.tanggal_berakhir) {
+      if (new Date(data.tanggal_mulai) >= new Date(data.tanggal_berakhir)) {
         setError("Tanggal berakhir harus setelah tanggal mulai")
         return
       }
@@ -115,12 +123,7 @@ export function AddEditDialog({
 
   const renderField = (field: Field) => {
     const { name, label, type, placeholder, options, className } = field
-    const value = values[name] || ""
-
-    // Debug select fields
-    if ((type === "select" || type === "searchable-select") && open) {
-      debugSelectValue(name, value, options || [])
-    }
+    const defaultValue = editData[name] || ""
 
     switch (type) {
       case "text":
@@ -132,13 +135,7 @@ export function AddEditDialog({
               {label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            <Input
-              name={name}
-              value={value}
-              onChange={(e) => onChange(e, formType)}
-              placeholder={placeholder}
-              type={type}
-            />
+            <Input name={name} defaultValue={defaultValue} placeholder={placeholder} type={type} />
           </div>
         )
       case "textarea":
@@ -148,7 +145,7 @@ export function AddEditDialog({
               {label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            <Textarea name={name} value={value} onChange={(e) => onChange(e, formType)} placeholder={placeholder} />
+            <Textarea name={name} defaultValue={defaultValue} placeholder={placeholder} />
           </div>
         )
       case "select":
@@ -158,18 +155,18 @@ export function AddEditDialog({
               {label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            <Select value={value?.toString() || ""} onValueChange={(val) => onSelectChange(name, val, formType)}>
-              <SelectTrigger>
-                <SelectValue placeholder={placeholder} />
-              </SelectTrigger>
-              <SelectContent>
-                {options?.map((option) => (
-                  <SelectItem key={option.value} value={option.value.toString()}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              name={name}
+              defaultValue={defaultValue}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">{placeholder}</option>
+              {options?.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         )
       case "searchable-select":
@@ -179,16 +176,18 @@ export function AddEditDialog({
               {label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            <SearchableSelect
-              options={options || []}
-              value={value?.toString() || ""} // Convert to string for matching
-              onValueChange={(val) => {
-                // Handle null values safely
-                const safeVal = val?.toString() || ""
-                onSelectChange(name, safeVal, formType)
-              }}
-              placeholder={placeholder}
-            />
+            <select
+              name={name}
+              defaultValue={defaultValue}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">{placeholder}</option>
+              {options?.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         )
       case "date":
@@ -198,7 +197,7 @@ export function AddEditDialog({
               {label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            <Input name={name} value={value || ""} onChange={(e) => onChange(e, formType)} type="date" />
+            <Input name={name} defaultValue={defaultValue} type="date" />
           </div>
         )
       default:
@@ -230,20 +229,22 @@ export function AddEditDialog({
           )}
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {Object.entries(
-            fields.reduce((acc: { [key: string]: Field[] }, field) => {
-              acc[field.section] = acc[field.section] || []
-              acc[field.section].push(field)
-              return acc
-            }, {}),
-          ).map(([section, sectionFields]) => (
-            <div key={section}>
-              <h3 className="text-lg font-semibold mb-2">{section}</h3>
-              <div className="grid gap-4 md:grid-cols-2">{sectionFields.map(renderField)}</div>
-            </div>
-          ))}
-        </div>
+        <form ref={formRef} onSubmit={(e) => e.preventDefault()}>
+          <div className="grid gap-4 py-4">
+            {Object.entries(
+              fields.reduce((acc: { [key: string]: Field[] }, field) => {
+                acc[field.section] = acc[field.section] || []
+                acc[field.section].push(field)
+                return acc
+              }, {}),
+            ).map(([section, sectionFields]) => (
+              <div key={section}>
+                <h3 className="text-lg font-semibold mb-2">{section}</h3>
+                <div className="grid gap-4 md:grid-cols-2">{sectionFields.map(renderField)}</div>
+              </div>
+            ))}
+          </div>
+        </form>
 
         <div className="flex justify-end space-x-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
