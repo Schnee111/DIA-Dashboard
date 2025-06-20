@@ -31,6 +31,7 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [internalValue, setInternalValue] = React.useState(value || "")
+  const [searchValue, setSearchValue] = React.useState("")
 
   // Update internal value when external value changes
   React.useEffect(() => {
@@ -54,22 +55,38 @@ export function SearchableSelect({
     }
   }, [placeholder, onValueChange])
 
+  // Filter options based on search value
+  const filteredOptions = React.useMemo(() => {
+    if (!searchValue.trim()) return options
+
+    const searchTerm = searchValue.toLowerCase().trim()
+    return options.filter((option) => option.label.toLowerCase().includes(searchTerm))
+  }, [options, searchValue])
+
   const selectedOption = options.find((option) => option.value === internalValue)
 
-  const handleSelect = (selectedLabel: string) => {
-    // Find the option by label since CommandItem uses label as value for search
-    const selectedOption = options.find((option) => option.label === selectedLabel)
+  const handleSelect = (selectedValue: string) => {
+    // Find the option by value
+    const selectedOption = filteredOptions.find((option) => option.value === selectedValue)
     if (selectedOption) {
       const newValue = selectedOption.value === internalValue ? "" : selectedOption.value
       setInternalValue(newValue)
       onValueChange(newValue)
     }
     setOpen(false)
+    setSearchValue("") // Clear search when closing
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen)
+    if (!newOpen) {
+      setSearchValue("") // Clear search when closing
+    }
   }
 
   return (
     <div data-field={placeholder} className={className}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -83,17 +100,17 @@ export function SearchableSelect({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-h-[300px] p-0" align="start">
-          <Command>
-            <CommandInput placeholder={`Cari ${placeholder.toLowerCase()}...`} />
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder={`Cari ${placeholder.toLowerCase()}...`}
+              value={searchValue}
+              onValueChange={setSearchValue}
+            />
             <CommandList>
               <CommandEmpty>Tidak ada data ditemukan.</CommandEmpty>
               <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.label} // Use label for search functionality
-                    onSelect={handleSelect}
-                  >
+                {filteredOptions.map((option) => (
+                  <CommandItem key={option.value} value={option.value} onSelect={handleSelect}>
                     <Check
                       className={cn("mr-2 h-4 w-4", internalValue === option.value ? "opacity-100" : "opacity-0")}
                     />
