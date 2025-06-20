@@ -26,6 +26,10 @@ interface AddEditDialogProps {
   onAddPersonel?: () => void
   onAddJenisDokumen?: () => void
   onAddJabatan?: () => void
+  onAddNegara?: () => void
+  onAddJenisPartner?: () => void
+  // Loading states
+  isLoading?: boolean
 }
 
 export function AddEditDialog({
@@ -42,6 +46,9 @@ export function AddEditDialog({
   onAddPersonel,
   onAddJenisDokumen,
   onAddJabatan,
+  onAddNegara,
+  onAddJenisPartner,
+  isLoading = false,
 }: AddEditDialogProps) {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,6 +60,7 @@ export function AddEditDialog({
     if (open) {
       setError("")
       setShowSuccess(false)
+      setIsSubmitting(false)
     } else {
       // Reset form when closing
       formRef.current?.reset()
@@ -134,7 +142,7 @@ export function AddEditDialog({
       .map((field) => field.label)
 
     if (missingFields.length > 0) {
-      setError(`Field wajib: ${missingFields.join(", ")}`)
+      setError(`Field wajib belum diisi: ${missingFields.join(", ")}`)
       return
     }
 
@@ -142,6 +150,15 @@ export function AddEditDialog({
     if (data.tanggal_mulai && data.tanggal_berakhir) {
       if (new Date(data.tanggal_mulai) >= new Date(data.tanggal_berakhir)) {
         setError("Tanggal berakhir harus setelah tanggal mulai")
+        return
+      }
+    }
+
+    // Email validation
+    if (data.email && data.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(data.email)) {
+        setError("Format email tidak valid")
         return
       }
     }
@@ -155,9 +172,10 @@ export function AddEditDialog({
       setTimeout(() => {
         onOpenChange(false)
         setShowSuccess(false)
-      }, 1000)
+      }, 1500)
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan data")
+      console.error("Form submission error:", err)
+      setError(err.message || "Gagal menyimpan data. Silakan coba lagi.")
     } finally {
       setIsSubmitting(false)
     }
@@ -172,8 +190,9 @@ export function AddEditDialog({
             variant="outline"
             size="sm"
             onClick={onAddMitra}
-            className="ml-2 px-2 py-1 h-8"
+            className="ml-2 px-2 py-1 h-8 bg-white text-black border-gray-300 hover:bg-gray-50"
             title="Tambah Mitra Baru"
+            disabled={isSubmitting}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -193,8 +212,9 @@ export function AddEditDialog({
             variant="outline"
             size="sm"
             onClick={onAddPersonel}
-            className="ml-2 px-2 py-1 h-8"
+            className="ml-2 px-2 py-1 h-8 bg-white text-black border-gray-300 hover:bg-gray-50"
             title="Tambah Personel Baru"
+            disabled={isSubmitting}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -208,8 +228,9 @@ export function AddEditDialog({
             variant="outline"
             size="sm"
             onClick={onAddJenisDokumen}
-            className="ml-2 px-2 py-1 h-8"
+            className="ml-2 px-2 py-1 h-8 bg-white text-black border-gray-300 hover:bg-gray-50"
             title="Tambah Jenis Dokumen Baru"
+            disabled={isSubmitting}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -223,8 +244,41 @@ export function AddEditDialog({
             variant="outline"
             size="sm"
             onClick={onAddJabatan}
-            className="ml-2 px-2 py-1 h-8"
+            className="ml-2 px-2 py-1 h-8 bg-white text-black border-gray-300 hover:bg-gray-50"
             title="Tambah Jabatan Baru"
+            disabled={isSubmitting}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )
+      }
+
+      if (fieldName === "negara_id" && onAddNegara) {
+        return (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddNegara}
+            className="ml-2 px-2 py-1 h-8 bg-white text-black border-gray-300 hover:bg-gray-50"
+            title="Tambah Negara Baru"
+            disabled={isSubmitting}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )
+      }
+
+      if (fieldName === "jenis_partner_id" && onAddJenisPartner) {
+        return (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddJenisPartner}
+            className="ml-2 px-2 py-1 h-8 bg-white text-black border-gray-300 hover:bg-gray-50"
+            title="Tambah Jenis Partner Baru"
+            disabled={isSubmitting}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -233,7 +287,7 @@ export function AddEditDialog({
 
       return null
     },
-    [onAddMitra, onAddPersonel, onAddJenisDokumen, onAddJabatan],
+    [onAddMitra, onAddPersonel, onAddJenisDokumen, onAddJabatan, onAddNegara, onAddJenisPartner, isSubmitting],
   )
 
   const handleSearchableSelectChange = useCallback((fieldName: string, value: string) => {
@@ -258,7 +312,13 @@ export function AddEditDialog({
                 {label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </label>
-              <Input name={name} defaultValue={defaultValue} placeholder={placeholder} type={type} />
+              <Input
+                name={name}
+                defaultValue={defaultValue}
+                placeholder={placeholder}
+                type={type}
+                disabled={isSubmitting}
+              />
             </div>
           )
         case "textarea":
@@ -268,7 +328,7 @@ export function AddEditDialog({
                 {label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </label>
-              <Textarea name={name} defaultValue={defaultValue} placeholder={placeholder} />
+              <Textarea name={name} defaultValue={defaultValue} placeholder={placeholder} disabled={isSubmitting} />
             </div>
           )
         case "select":
@@ -281,6 +341,7 @@ export function AddEditDialog({
               <select
                 name={name}
                 defaultValue={defaultValue}
+                disabled={isSubmitting}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">{placeholder}</option>
@@ -306,6 +367,7 @@ export function AddEditDialog({
                     value={searchableSelectValues[name] || defaultValue}
                     onValueChange={(value) => handleSearchableSelectChange(name, value)}
                     placeholder={placeholder}
+                    disabled={isSubmitting}
                   />
                   {/* Hidden input for form submission */}
                   <input type="hidden" name={name} value={searchableSelectValues[name] || defaultValue} />
@@ -321,21 +383,24 @@ export function AddEditDialog({
                 {label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </label>
-              <Input name={name} defaultValue={defaultValue} type="date" />
+              <Input name={name} defaultValue={defaultValue} type="date" disabled={isSubmitting} />
             </div>
           )
         default:
           return null
       }
     },
-    [editData, searchableSelectValues, handleSearchableSelectChange, renderAddButton],
+    [editData, searchableSelectValues, handleSearchableSelectChange, renderAddButton, isSubmitting],
   )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {title}
+          </DialogTitle>
           <DialogDescription>{description}</DialogDescription>
 
           {/* Error Alert */}
@@ -351,6 +416,14 @@ export function AddEditDialog({
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">✅ Data berhasil disimpan!</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Loading Alert */}
+          {isLoading && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <AlertDescription className="text-blue-800">Sedang memproses data...</AlertDescription>
             </Alert>
           )}
         </DialogHeader>
@@ -373,10 +446,15 @@ export function AddEditDialog({
         </form>
 
         <div className="flex justify-end space-x-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+            className="bg-white text-black border-gray-300 hover:bg-gray-50"
+          >
             Batal
           </Button>
-          <Button onClick={validateAndSubmit} disabled={isSubmitting}>
+          <Button onClick={validateAndSubmit} disabled={isSubmitting || isLoading}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

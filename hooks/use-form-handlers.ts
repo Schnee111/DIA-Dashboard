@@ -68,6 +68,26 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
   // State to trigger re-render of searchable selects
   const [searchableSelectKey, setSearchableSelectKey] = useState(0)
 
+  // Loading states for individual operations
+  const [loadingStates, setLoadingStates] = useState<{
+    addMitra: boolean
+    addPersonel: boolean
+    addJabatan: boolean
+    addJenisDokumen: boolean
+    addNegara: boolean
+  }>({
+    addMitra: false,
+    addPersonel: false,
+    addJabatan: false,
+    addJenisDokumen: false,
+    addNegara: false,
+  })
+
+  // Helper to set loading state
+  const setLoadingState = (operation: keyof typeof loadingStates, loading: boolean) => {
+    setLoadingStates((prev) => ({ ...prev, [operation]: loading }))
+  }
+
   // Get form data from form elements - with proper null checking
   const getFormData = (formRef: React.RefObject<HTMLFormElement | null>) => {
     if (!formRef.current) return {}
@@ -143,8 +163,15 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
   }
 
   const handleAddMitra = async () => {
+    setLoadingState("addMitra", true)
     try {
       const formData = getFormData(mitraFormRef)
+
+      // Validate required fields
+      if (!formData.nama_mitra || formData.nama_mitra.trim() === "") {
+        throw new Error("Nama mitra wajib diisi")
+      }
+
       const createdMitra = await createMitra(formData)
 
       // Refresh data first
@@ -164,41 +191,58 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       }
 
       toast({
-        title: "✅ Berhasil Ditambahkan",
-        description: `Mitra "${createdMitra.nama_mitra}" berhasil ditambahkan ke sistem`,
+        title: "✅ Mitra Berhasil Ditambahkan",
+        description: `Mitra "${createdMitra.nama_mitra}" telah berhasil ditambahkan ke sistem dan siap digunakan.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error adding mitra:", error)
       toast({
-        title: "❌ Gagal Menambahkan",
-        description: error.message || "Terjadi kesalahan saat menambahkan mitra.",
+        title: "❌ Gagal Menambahkan Mitra",
+        description: error.message || "Terjadi kesalahan saat menambahkan mitra. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
+    } finally {
+      setLoadingState("addMitra", false)
     }
   }
 
   const handleEditMitra = async () => {
     if (!selectedMitra) return
+    setLoadingState("addMitra", true)
     try {
       const formData = getFormData(mitraFormRef)
+
+      if (!formData.nama_mitra || formData.nama_mitra.trim() === "") {
+        throw new Error("Nama mitra wajib diisi")
+      }
+
       await updateMitra(selectedMitra.mitra_id, formData)
       if (refreshData) refreshData()
       setIsEditMitraOpen(false)
       setSelectedMitra(null)
       setEditMitraData({})
+
       toast({
-        title: "✅ Berhasil Diperbarui",
-        description: `Data mitra "${formData.nama_mitra}" berhasil diperbarui dalam sistem`,
+        title: "✅ Mitra Berhasil Diperbarui",
+        description: `Data mitra "${formData.nama_mitra}" telah berhasil diperbarui dalam sistem.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error updating mitra:", error)
       toast({
-        title: "❌ Gagal Memperbarui",
-        description: error.message || "Terjadi kesalahan saat memperbarui data mitra.",
+        title: "❌ Gagal Memperbarui Mitra",
+        description: error.message || "Terjadi kesalahan saat memperbarui data mitra. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
+    } finally {
+      setLoadingState("addMitra", false)
     }
   }
 
@@ -209,16 +253,21 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       if (refreshData) refreshData()
       setIsDeleteMitraOpen(false)
       setSelectedMitra(null)
+
       toast({
-        title: "✅ Berhasil Dihapus",
-        description: `Data mitra "${selectedMitra.nama_mitra}" berhasil dihapus dari sistem`,
+        title: "✅ Mitra Berhasil Dihapus",
+        description: `Data mitra "${selectedMitra.nama_mitra}" telah berhasil dihapus dari sistem.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error deleting mitra:", error)
       toast({
-        title: "❌ Gagal Menghapus",
-        description: error.message || "Terjadi kesalahan saat menghapus data mitra.",
+        title: "❌ Gagal Menghapus Mitra",
+        description:
+          error.message || "Terjadi kesalahan saat menghapus data mitra. Mungkin data masih digunakan di tempat lain.",
         variant: "destructive",
+        duration: 5000,
       })
     }
   }
@@ -228,22 +277,33 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       const formData = getFormData(kerjasamaFormRef)
       console.log("Submitting kerjasama data:", formData)
 
+      // Validate required fields
+      if (!formData.judul_kerjasama || formData.judul_kerjasama.trim() === "") {
+        throw new Error("Judul kerjasama wajib diisi")
+      }
+      if (!formData.mitra_id) {
+        throw new Error("Mitra wajib dipilih")
+      }
+
       const createdKerjasama = await createKerjasama(formData)
       if (refreshData) refreshData()
       setIsAddKerjasamaOpen(false)
       kerjasamaFormRef.current?.reset()
       setSearchableSelectKey((prev) => prev + 1) // Reset searchable selects
+
       toast({
-        title: "✅ Berhasil Ditambahkan",
-        description: `Kerjasama "${createdKerjasama.judul_kerjasama}" berhasil ditambahkan ke sistem`,
+        title: "✅ Kerjasama Berhasil Ditambahkan",
+        description: `Kerjasama "${createdKerjasama.judul_kerjasama}" telah berhasil ditambahkan ke sistem.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
       console.error("Error in handleAddKerjasama:", error)
       toast({
-        title: "❌ Gagal Menambahkan",
-        description: error.message || "Terjadi kesalahan saat menambahkan data kerjasama.",
+        title: "❌ Gagal Menambahkan Kerjasama",
+        description: error.message || "Terjadi kesalahan saat menambahkan data kerjasama. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
     }
@@ -253,21 +313,30 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     if (!selectedKerjasama) return
     try {
       const formData = getFormData(kerjasamaFormRef)
+
+      if (!formData.judul_kerjasama || formData.judul_kerjasama.trim() === "") {
+        throw new Error("Judul kerjasama wajib diisi")
+      }
+
       await updateKerjasama(selectedKerjasama.kerjasama_id, formData)
       if (refreshData) refreshData()
       setIsEditKerjasamaOpen(false)
       setSelectedKerjasama(null)
       setEditKerjasamaData({})
+
       toast({
-        title: "✅ Berhasil Diperbarui",
-        description: `Data kerjasama "${formData.judul_kerjasama}" berhasil diperbarui`,
+        title: "✅ Kerjasama Berhasil Diperbarui",
+        description: `Data kerjasama "${formData.judul_kerjasama}" telah berhasil diperbarui.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error updating kerjasama:", error)
       toast({
-        title: "❌ Gagal Memperbarui",
-        description: error.message || "Terjadi kesalahan saat memperbarui data kerjasama.",
+        title: "❌ Gagal Memperbarui Kerjasama",
+        description: error.message || "Terjadi kesalahan saat memperbarui data kerjasama. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
     }
@@ -280,23 +349,37 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       if (refreshData) refreshData()
       setIsDeleteKerjasamaOpen(false)
       setSelectedKerjasama(null)
+
       toast({
-        title: "✅ Berhasil Dihapus",
-        description: `Data kerjasama "${selectedKerjasama.judul_kerjasama}" berhasil dihapus dari sistem`,
+        title: "✅ Kerjasama Berhasil Dihapus",
+        description: `Data kerjasama "${selectedKerjasama.judul_kerjasama}" telah berhasil dihapus dari sistem.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error deleting kerjasama:", error)
       toast({
-        title: "❌ Gagal Menghapus",
-        description: error.message || "Terjadi kesalahan saat menghapus data kerjasama.",
+        title: "❌ Gagal Menghapus Kerjasama",
+        description: error.message || "Terjadi kesalahan saat menghapus data kerjasama. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
     }
   }
 
   const handleAddPersonel = async () => {
+    setLoadingState("addPersonel", true)
     try {
       const formData = getFormData(personelFormRef)
+
+      // Validate required fields
+      if (!formData.nama || formData.nama.trim() === "") {
+        throw new Error("Nama personel wajib diisi")
+      }
+      if (!formData.pihak) {
+        throw new Error("Pihak wajib dipilih")
+      }
+
       const createdPersonel = await createPersonel(formData)
 
       // Refresh data first
@@ -317,41 +400,58 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       }
 
       toast({
-        title: "✅ Berhasil Ditambahkan",
-        description: `Personel "${createdPersonel.nama}" berhasil ditambahkan ke sistem`,
+        title: "✅ Personel Berhasil Ditambahkan",
+        description: `Personel "${createdPersonel.nama}" telah berhasil ditambahkan ke sistem dan siap digunakan.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error adding personel:", error)
       toast({
-        title: "❌ Gagal Menambahkan",
-        description: error.message || "Terjadi kesalahan saat menambahkan data personel.",
+        title: "❌ Gagal Menambahkan Personel",
+        description: error.message || "Terjadi kesalahan saat menambahkan data personel. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
+    } finally {
+      setLoadingState("addPersonel", false)
     }
   }
 
   const handleEditPersonel = async () => {
     if (!selectedPersonel) return
+    setLoadingState("addPersonel", true)
     try {
       const formData = getFormData(personelFormRef)
+
+      if (!formData.nama || formData.nama.trim() === "") {
+        throw new Error("Nama personel wajib diisi")
+      }
+
       await updatePersonel(selectedPersonel.personel_id, formData)
       if (refreshData) refreshData()
       setIsEditPersonelOpen(false)
       setSelectedPersonel(null)
       setEditPersonelData({})
+
       toast({
-        title: "✅ Berhasil Diperbarui",
-        description: `Data personel "${formData.nama}" berhasil diperbarui`,
+        title: "✅ Personel Berhasil Diperbarui",
+        description: `Data personel "${formData.nama}" telah berhasil diperbarui.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error updating personel:", error)
       toast({
-        title: "❌ Gagal Memperbarui",
-        description: error.message || "Terjadi kesalahan saat memperbarui data personel.",
+        title: "❌ Gagal Memperbarui Personel",
+        description: error.message || "Terjadi kesalahan saat memperbarui data personel. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
+    } finally {
+      setLoadingState("addPersonel", false)
     }
   }
 
@@ -362,23 +462,39 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       if (refreshData) refreshData()
       setIsDeletePersonelOpen(false)
       setSelectedPersonel(null)
+
       toast({
-        title: "✅ Berhasil Dihapus",
-        description: `Data personel "${selectedPersonel.nama}" berhasil dihapus dari sistem`,
+        title: "✅ Personel Berhasil Dihapus",
+        description: `Data personel "${selectedPersonel.nama}" telah berhasil dihapus dari sistem.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error deleting personel:", error)
       toast({
-        title: "❌ Gagal Menghapus",
-        description: error.message || "Terjadi kesalahan saat menghapus data personel.",
+        title: "❌ Gagal Menghapus Personel",
+        description:
+          error.message ||
+          "Terjadi kesalahan saat menghapus data personel. Mungkin data masih digunakan di tempat lain.",
         variant: "destructive",
+        duration: 5000,
       })
     }
   }
 
   const handleAddJabatan = async () => {
+    setLoadingState("addJabatan", true)
     try {
       const formData = getFormData(jabatanFormRef)
+
+      // Validate required fields
+      if (!formData.nama_jabatan || formData.nama_jabatan.trim() === "") {
+        throw new Error("Nama jabatan wajib diisi")
+      }
+      if (!formData.pihak) {
+        throw new Error("Pihak wajib dipilih")
+      }
+
       const createdJabatan = await createJabatan(formData)
 
       // Refresh data first
@@ -398,44 +514,68 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       }
 
       toast({
-        title: "✅ Berhasil Ditambahkan",
-        description: `Jabatan "${formData.nama_jabatan}" berhasil ditambahkan`,
+        title: "✅ Jabatan Berhasil Ditambahkan",
+        description: `Jabatan "${formData.nama_jabatan}" untuk pihak ${formData.pihak} telah berhasil ditambahkan dan siap digunakan.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error adding jabatan:", error)
       toast({
-        title: "❌ Gagal Menambahkan",
-        description: error.message || "Terjadi kesalahan saat menambahkan jabatan.",
+        title: "❌ Gagal Menambahkan Jabatan",
+        description: error.message || "Terjadi kesalahan saat menambahkan jabatan. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
+    } finally {
+      setLoadingState("addJabatan", false)
     }
   }
 
   const handleAddNegara = async (nama_negara: string) => {
+    setLoadingState("addNegara", true)
     try {
-      await createNegara({ nama_negara })
+      if (!nama_negara || nama_negara.trim() === "") {
+        throw new Error("Nama negara wajib diisi")
+      }
+
+      await createNegara({ nama_negara: nama_negara.trim() })
       if (refreshData) refreshData()
+
       toast({
-        title: "✅ Berhasil Ditambahkan",
-        description: `Negara "${nama_negara}" berhasil ditambahkan`,
+        title: "✅ Negara Berhasil Ditambahkan",
+        description: `Negara "${nama_negara}" telah berhasil ditambahkan ke sistem dan siap digunakan.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error adding negara:", error)
       toast({
-        title: "❌ Gagal Menambahkan",
-        description: error.message || "Terjadi kesalahan saat menambahkan negara.",
+        title: "❌ Gagal Menambahkan Negara",
+        description: error.message || "Terjadi kesalahan saat menambahkan negara. Mungkin negara sudah ada.",
         variant: "destructive",
+        duration: 5000,
       })
+      throw error
+    } finally {
+      setLoadingState("addNegara", false)
     }
   }
 
   const handleAddJenisDokumen = async () => {
+    setLoadingState("addJenisDokumen", true)
     try {
       const formData = getFormData(jenisDokumenFormRef)
+
+      // Validate required fields
+      if (!formData.nama_jenis || formData.nama_jenis.trim() === "") {
+        throw new Error("Nama jenis dokumen wajib diisi")
+      }
+
       const createdJenisDokumen = await createJenisDokumen({
-        nama_jenis: formData.nama_jenis,
-        deskripsi: formData.deskripsi,
+        nama_jenis: formData.nama_jenis.trim(),
+        deskripsi: formData.deskripsi?.trim() || null,
       })
 
       // Refresh data first
@@ -452,17 +592,22 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       }, 1000)
 
       toast({
-        title: "✅ Berhasil Ditambahkan",
-        description: `Jenis dokumen "${formData.nama_jenis}" berhasil ditambahkan`,
+        title: "✅ Jenis Dokumen Berhasil Ditambahkan",
+        description: `Jenis dokumen "${formData.nama_jenis}" telah berhasil ditambahkan dan siap digunakan.`,
         variant: "default",
+        duration: 4000,
       })
     } catch (error: any) {
+      console.error("Error adding jenis dokumen:", error)
       toast({
-        title: "❌ Gagal Menambahkan",
-        description: error.message || "Terjadi kesalahan saat menambahkan jenis dokumen.",
+        title: "❌ Gagal Menambahkan Jenis Dokumen",
+        description: error.message || "Terjadi kesalahan saat menambahkan jenis dokumen. Silakan coba lagi.",
         variant: "destructive",
+        duration: 5000,
       })
       throw error
+    } finally {
+      setLoadingState("addJenisDokumen", false)
     }
   }
 
@@ -616,6 +761,9 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     isAddPersonelModalOpen,
     isAddJabatanModalOpen,
     isAddJenisDokumenModalOpen,
+
+    // Loading states
+    loadingStates,
 
     // Setters
     setSelectedMitra,

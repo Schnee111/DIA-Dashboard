@@ -58,7 +58,7 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
     setCurrentPage(1)
   }, [searchTerm, filterJenisPartner, filterNegara])
 
-  // Define form fields
+  // Define form fields with searchable-select
   const mitraFields: Field[] = useMemo(
     () => [
       {
@@ -72,7 +72,7 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
       {
         name: "negara_id",
         label: "Negara",
-        type: "select",
+        type: "searchable-select",
         placeholder: "Pilih negara",
         section: "Informasi Dasar",
         options: negaraData.map((negara) => ({
@@ -84,7 +84,7 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
       {
         name: "jenis_partner_id",
         label: "Jenis Partner",
-        type: "select",
+        type: "searchable-select",
         placeholder: "Pilih jenis partner",
         section: "Informasi Dasar",
         options: jenisPartnerData.map((jenis) => ({
@@ -152,6 +152,27 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
       variant: result.success ? "default" : "destructive",
     })
   }, [filteredData, toast])
+
+  // Handler for adding negara from mitra form
+  const handleAddNegaraFromMitra = () => {
+    const namaNegaraInput = prompt("Masukkan nama negara baru:")
+    if (namaNegaraInput && namaNegaraInput.trim()) {
+      formHandlers.handleAddNegara(namaNegaraInput.trim())
+    }
+  }
+
+  // Handler for adding jenis partner from mitra form
+  const handleAddJenisPartnerFromMitra = () => {
+    const namaJenisInput = prompt("Masukkan nama jenis partner baru:")
+    if (namaJenisInput && namaJenisInput.trim()) {
+      // For now, we'll use a simple prompt. In a real app, you'd want a proper modal
+      toast({
+        title: "ℹ️ Info",
+        description: "Fitur tambah jenis partner akan segera tersedia. Silakan hubungi administrator.",
+        variant: "default",
+      })
+    }
+  }
 
   return (
     <Card>
@@ -271,6 +292,7 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
         onOpenChange={formHandlers.setIsAddMitraOpen}
         formType="mitra"
         formRef={formHandlers.mitraFormRef}
+        isLoading={formHandlers.loadingStates.addMitra}
       />
 
       {/* Edit Dialog */}
@@ -284,6 +306,7 @@ export function MitraTab({ searchTerm, setSearchTerm, filterYearFrom, filterYear
         onOpenChange={formHandlers.setIsEditMitraOpen}
         formType="mitra"
         formRef={formHandlers.mitraFormRef}
+        isLoading={formHandlers.loadingStates.addMitra}
       />
 
       {/* View Dialog */}
