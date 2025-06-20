@@ -40,7 +40,7 @@ export function Sidebar({ role }: SidebarProps) {
     },
     {
       name: "Manajemen Data",
-      href: "/admin/data",
+      href: "/admin",
       icon: HardDrive,
       allowedRoles: ["admin"],
     },
