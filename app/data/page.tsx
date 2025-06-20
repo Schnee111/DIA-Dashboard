@@ -8,7 +8,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Eye, ArrowUpDown, Check, ChevronsUpDown, X, Search, Download } from "lucide-react"
+import { Eye, ArrowUpDown, Check, ChevronsUpDown, X, Search, Download, Calendar } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandList, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
-import { fetchDashboardData, exportToCSV } from "@/lib/dataService"
+import { fetchDashboardData, exportToCSV, extractYearsFromDates } from "@/lib/dataService"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -71,6 +71,21 @@ const formatDate = (dateString?: string) =>
     ? "-"
     : new Date(dateString).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" })
 
+// Helper function to check if cooperation falls within year range
+const isWithinYearRange = (startDate: string, endDate: string, yearFrom: string, yearTo: string): boolean => {
+  if (yearFrom === "all" && yearTo === "all") return true
+  
+  const startYear = new Date(startDate).getFullYear()
+  const endYear = new Date(endDate).getFullYear()
+  
+  const fromYear = yearFrom === "all" ? 0 : parseInt(yearFrom)
+  const toYear = yearTo === "all" ? 9999 : parseInt(yearTo)
+  
+  // Check if either start date or end date falls within the range
+  return (startYear >= fromYear && startYear <= toYear) || (endYear >= fromYear && endYear <= toYear) ||
+         (startYear < fromYear && endYear > toYear) // spans across the range
+}
+
 export default function DataPublikPage() {
   const { toast } = useToast()
 
@@ -88,6 +103,9 @@ export default function DataPublikPage() {
   const [filterMitra, setFilterMitra] = useState<string>("all")
   const [filterMitraNegara, setFilterMitraNegara] = useState<string>("all")
   const [filterJenisPartner, setFilterJenisPartner] = useState<string>("all")
+  const [filterYearFrom, setFilterYearFrom] = useState<string>("all")
+  const [filterYearTo, setFilterYearTo] = useState<string>("all")
+  const [availableYears, setAvailableYears] = useState<number[]>([])
   const [sortConfig, setSortConfig] = useState<{ key: keyof KerjasamaItem; direction: SortDirection } | null>({
     key: "tanggal_mulai",
     direction: "descending",
@@ -99,7 +117,6 @@ export default function DataPublikPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [mitraCurrentPage, setMitraCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
@@ -107,6 +124,10 @@ export default function DataPublikPage() {
         const data = await fetchDashboardData()
         setKerjasamaData(data.kerjasamaData)
         setMitraData(data.mitraData)
+        
+        // Extract available years for filtering
+        const allDates = [...data.kerjasamaData.map(item => item.tanggal_mulai), ...data.kerjasamaData.map(item => item.tanggal_berakhir)].filter(Boolean)
+        setAvailableYears(extractYearsFromDates(allDates))
       } catch (error) {
         toast({ title: "Error", description: "Gagal memuat data", variant: "destructive" })
       } finally {
@@ -130,7 +151,6 @@ export default function DataPublikPage() {
     () => [...new Set(mitraData.map((item) => item.jenis_partner_nama))].sort(),
     [mitraData],
   )
-
   const filteredAndSortedKerjasama = useMemo(() => {
     const items = kerjasamaData.filter(
       (item) =>
@@ -139,7 +159,8 @@ export default function DataPublikPage() {
         (filterStatus === "all" || item.status === filterStatus) &&
         (filterNegara === "all" || item.nama_negara === filterNegara) &&
         (filterJenisDokumen === "all" || item.jenis_dokumen === filterJenisDokumen) &&
-        (filterMitra === "all" || item.nama_mitra === filterMitra),
+        (filterMitra === "all" || item.nama_mitra === filterMitra) &&
+        isWithinYearRange(item.tanggal_mulai, item.tanggal_berakhir, filterYearFrom, filterYearTo),
     )
     if (sortConfig) {
       items.sort((a, b) => {
@@ -151,7 +172,7 @@ export default function DataPublikPage() {
       })
     }
     return items
-  }, [kerjasamaData, searchTerm, filterStatus, filterNegara, filterJenisDokumen, filterMitra, sortConfig])
+  }, [kerjasamaData, searchTerm, filterStatus, filterNegara, filterJenisDokumen, filterMitra, filterYearFrom, filterYearTo, sortConfig])
 
   const filteredAndSortedMitra = useMemo(() => {
     const items = mitraData.filter(
@@ -211,15 +232,17 @@ export default function DataPublikPage() {
     toast({
       title: result.success ? "Berhasil" : "Gagal",
       description: result.message,
-      variant: result.success ? "default" : "destructive",
-    })
+      variant: result.success ? "default" : "destructive",    })
   }
+  
   const handleResetKerjasamaFilters = () => {
     setSearchTerm("")
     setFilterMitra("all")
     setFilterNegara("all")
     setFilterJenisDokumen("all")
     setFilterStatus("all")
+    setFilterYearFrom("all")
+    setFilterYearTo("all")
   }
   const handleResetMitraFilters = () => {
     setMitraSearchTerm("")
@@ -319,10 +342,18 @@ export default function DataPublikPage() {
             <TabsTrigger value="mitra">Data Mitra</TabsTrigger>
           </TabsList>
           <TabsContent value="kerjasama" className="mt-4">
-            <Card>
+            <Card>              
               <CardHeader>
-                <CardTitle>Daftar Kerjasama</CardTitle>
-                <CardDescription>Cari dan lihat semua data kerjasama dalam sistem.</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="h-8">Daftar Kerjasama</CardTitle>
+                    <CardDescription className="h-8">Cari dan lihat semua data kerjasama dalam sistem.</CardDescription>
+                  </div>
+                  <Button onClick={handleExportKerjasama} size="sm">
+                    <Download className="mr-2 h-4 w-4" />
+                    Ekspor
+                  </Button>
+                </div>
                 <div className="flex flex-wrap items-center gap-2 mt-4">
                   <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
@@ -370,14 +401,37 @@ export default function DataPublikPage() {
                       <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
                       <SelectItem value="Draft">Draft</SelectItem>
                       <SelectItem value="Berakhir">Berakhir</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" size="sm" onClick={handleResetKerjasamaFilters}>
+                    </SelectContent>                  </Select>
+                  <div className="flex items-center gap-1">
+                    <Select value={filterYearFrom} onValueChange={setFilterYearFrom}>
+                      <SelectTrigger className="w-[100px] h-9 text-xs">
+                        <SelectValue placeholder="Dari Tahun" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua</SelectItem>
+                        {availableYears.map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-500 px-1">s/d</span>
+                    <Select value={filterYearTo} onValueChange={setFilterYearTo}>
+                      <SelectTrigger className="w-[100px] h-9 text-xs">
+                        <SelectValue placeholder="Sampai" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua</SelectItem>
+                        {availableYears.map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>                  <Button variant="outline" size="sm" onClick={handleResetKerjasamaFilters}>
                     <X className="mr-2 h-4 w-4" /> Reset
-                  </Button>
-                  <Button onClick={handleExportKerjasama} size="sm" className="ml-auto">
-                    <Download className="mr-2 h-4 w-4" />
-                    Ekspor
                   </Button>
                 </div>
               </CardHeader>
