@@ -55,6 +55,12 @@ export function AddEditDialog({
   const [showSuccess, setShowSuccess] = useState(false)
   const [searchableSelectValues, setSearchableSelectValues] = useState<{ [key: string]: string }>({})
 
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date()
+    return today.toISOString().split("T")[0]
+  }
+
   // Reset states when dialog opens/closes
   useEffect(() => {
     if (open) {
@@ -89,30 +95,54 @@ export function AddEditDialog({
     }
   }, [open, JSON.stringify(editData)]) // Use JSON.stringify for stable comparison
 
-  // Set default values for edit mode
+  // Set default values for edit mode and new entries
   useEffect(() => {
-    if (open && Object.keys(editData).length > 0 && formRef.current) {
+    if (open && formRef.current) {
       // Small delay to ensure form is rendered
       const timeoutId = setTimeout(() => {
-        Object.entries(editData).forEach(([key, value]) => {
-          const input = formRef.current?.querySelector(`[name="${key}"]`) as
-            | HTMLInputElement
-            | HTMLSelectElement
-            | HTMLTextAreaElement
-          if (input && value !== null && value !== undefined) {
-            input.value = value.toString()
+        // Set edit data values if available
+        if (Object.keys(editData).length > 0) {
+          Object.entries(editData).forEach(([key, value]) => {
+            const input = formRef.current?.querySelector(`[name="${key}"]`) as
+              | HTMLInputElement
+              | HTMLSelectElement
+              | HTMLTextAreaElement
+            if (input && value !== null && value !== undefined) {
+              input.value = value.toString()
 
-            // Trigger change event for select components
-            if (input.tagName === "SELECT") {
-              input.dispatchEvent(new Event("change", { bubbles: true }))
+              // Trigger change event for select components
+              if (input.tagName === "SELECT") {
+                input.dispatchEvent(new Event("change", { bubbles: true }))
+              }
             }
-          }
-        })
+          })
+        } else {
+          // Set default values for new entries (when editData is empty)
+          fields.forEach((field) => {
+            if (field.defaultValue) {
+              const input = formRef.current?.querySelector(`[name="${field.name}"]`) as
+                | HTMLInputElement
+                | HTMLSelectElement
+                | HTMLTextAreaElement
+              if (input) {
+                // For date fields, use the function result if it's a function
+                const defaultValue =
+                  typeof field.defaultValue === "function" ? field.defaultValue() : field.defaultValue
+                input.value = defaultValue
+
+                // Trigger change event for select components
+                if (input.tagName === "SELECT") {
+                  input.dispatchEvent(new Event("change", { bubbles: true }))
+                }
+              }
+            }
+          })
+        }
       }, 100)
 
       return () => clearTimeout(timeoutId)
     }
-  }, [open, JSON.stringify(editData), formRef])
+  }, [open, JSON.stringify(editData), formRef, fields])
 
   const validateAndSubmit = useCallback(async () => {
     if (!formRef.current) return
@@ -299,8 +329,11 @@ export function AddEditDialog({
 
   const renderField = useCallback(
     (field: Field) => {
-      const { name, label, type, placeholder, options, className } = field
-      const defaultValue = editData[name] || ""
+      const { name, label, type, placeholder, options, className, defaultValue } = field
+      const editValue = editData[name] || ""
+
+      // Use editValue if available (edit mode), otherwise use defaultValue (add mode)
+      const fieldValue = Object.keys(editData).length > 0 ? editValue : defaultValue || ""
 
       switch (type) {
         case "text":
@@ -314,7 +347,7 @@ export function AddEditDialog({
               </label>
               <Input
                 name={name}
-                defaultValue={defaultValue}
+                defaultValue={fieldValue}
                 placeholder={placeholder}
                 type={type}
                 disabled={isSubmitting}
@@ -328,7 +361,7 @@ export function AddEditDialog({
                 {label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </label>
-              <Textarea name={name} defaultValue={defaultValue} placeholder={placeholder} disabled={isSubmitting} />
+              <Textarea name={name} defaultValue={fieldValue} placeholder={placeholder} disabled={isSubmitting} />
             </div>
           )
         case "select":
@@ -340,7 +373,7 @@ export function AddEditDialog({
               </label>
               <select
                 name={name}
-                defaultValue={defaultValue}
+                defaultValue={fieldValue}
                 disabled={isSubmitting}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -364,13 +397,13 @@ export function AddEditDialog({
                 <div className="flex-1" data-field={name}>
                   <SearchableSelect
                     options={options || []}
-                    value={searchableSelectValues[name] || defaultValue}
+                    value={searchableSelectValues[name] || fieldValue}
                     onValueChange={(value) => handleSearchableSelectChange(name, value)}
                     placeholder={placeholder}
                     disabled={isSubmitting}
                   />
                   {/* Hidden input for form submission */}
-                  <input type="hidden" name={name} value={searchableSelectValues[name] || defaultValue} />
+                  <input type="hidden" name={name} value={searchableSelectValues[name] || fieldValue} />
                 </div>
                 {renderAddButton(name)}
               </div>
@@ -383,7 +416,7 @@ export function AddEditDialog({
                 {label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </label>
-              <Input name={name} defaultValue={defaultValue} type="date" disabled={isSubmitting} />
+              <Input name={name} defaultValue={fieldValue} type="date" disabled={isSubmitting} />
             </div>
           )
         default:

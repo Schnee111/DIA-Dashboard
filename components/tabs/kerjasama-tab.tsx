@@ -43,6 +43,12 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date()
+    return today.toISOString().split("T")[0]
+  }
+
   // Memoize unique values for filters to prevent recalculation
   const { uniqueNegara, uniqueJenisDokumen } = useMemo(() => {
     const negaraSet = new Set(kerjasamaData.map((item) => item.nama_negara).filter(Boolean))
@@ -154,6 +160,7 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
         type: "number",
         placeholder: "Masukkan tahun",
         section: "Informasi Dasar",
+        defaultValue: new Date().getFullYear().toString(),
       },
       {
         name: "status",
@@ -167,6 +174,7 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
           { value: "Draft", label: "Draft" },
           { value: "Berakhir", label: "Berakhir" },
         ],
+        defaultValue: "Aktif",
       },
       {
         name: "pelaksana",
@@ -201,6 +209,7 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
         type: "number",
         placeholder: "Masukkan jumlah pihak",
         section: "Informasi Mitra & Dokumen",
+        defaultValue: "2",
       },
 
       // Dates Section
@@ -223,6 +232,7 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
         label: "Tanggal Input",
         type: "date",
         section: "Tanggal",
+        defaultValue: getTodayDate(),
       },
       {
         name: "tgl_lapor",
@@ -300,35 +310,10 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
           { value: "Sudah", label: "Sudah Lapor" },
           { value: "Belum", label: "Belum Lapor" },
         ],
+        defaultValue: "Belum",
       },
     ],
     [optionsData],
-  )
-
-  const jabatanFields: Field[] = useMemo(
-    () => [
-      {
-        name: "nama_jabatan",
-        label: "Nama Jabatan",
-        type: "text",
-        placeholder: "Masukkan nama jabatan",
-        section: "Informasi Jabatan",
-        required: true,
-      },
-      {
-        name: "pihak",
-        label: "Pihak",
-        type: "select",
-        placeholder: "Pilih pihak",
-        section: "Informasi Jabatan",
-        options: [
-          { value: "UPI", label: "UPI" },
-          { value: "MITRA", label: "MITRA" },
-        ],
-        required: true,
-      },
-    ],
-    [],
   )
 
   // Memoize mitra fields for the add mitra modal
@@ -792,19 +777,6 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
         onOpenChange={formHandlers.setIsAddJenisDokumenModalOpen}
         formType="jabatan"
         formRef={formHandlers.jenisDokumenFormRef}
-      />
-
-      {/* Add Jabatan Dialog */}
-      <AddEditDialog
-        title="Tambah Jabatan Baru"
-        description="Isi form berikut untuk menambahkan jabatan baru"
-        fields={jabatanFields}
-        editData={{}}
-        onSubmit={formHandlers.handleAddJabatan}
-        open={formHandlers.isAddJabatanModalOpen}
-        onOpenChange={formHandlers.setIsAddJabatanModalOpen}
-        formType="jabatan"
-        formRef={formHandlers.jabatanFormRef}
       />
 
       {/* View Dialog */}

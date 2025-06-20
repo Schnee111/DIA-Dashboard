@@ -91,6 +91,7 @@ export type Field = {
   options?: { value: string; label: string }[]
   required?: boolean
   className?: string
+  defaultValue?: string | (() => string)
 }
 
 export interface ViewField {

@@ -56,10 +56,14 @@ export function SearchableSelect({
 
   const selectedOption = options.find((option) => option.value === internalValue)
 
-  const handleSelect = (selectedValue: string) => {
-    const newValue = selectedValue === internalValue ? "" : selectedValue
-    setInternalValue(newValue)
-    onValueChange(newValue)
+  const handleSelect = (selectedLabel: string) => {
+    // Find the option by label since CommandItem uses label as value for search
+    const selectedOption = options.find((option) => option.label === selectedLabel)
+    if (selectedOption) {
+      const newValue = selectedOption.value === internalValue ? "" : selectedOption.value
+      setInternalValue(newValue)
+      onValueChange(newValue)
+    }
     setOpen(false)
   }
 
@@ -78,14 +82,18 @@ export function SearchableSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-h-[300px] p-0" align="start">
           <Command>
             <CommandInput placeholder={`Cari ${placeholder.toLowerCase()}...`} />
             <CommandList>
               <CommandEmpty>Tidak ada data ditemukan.</CommandEmpty>
               <CommandGroup>
                 {options.map((option) => (
-                  <CommandItem key={option.value} value={option.value} onSelect={() => handleSelect(option.value)}>
+                  <CommandItem
+                    key={option.value}
+                    value={option.label} // Use label for search functionality
+                    onSelect={handleSelect}
+                  >
                     <Check
                       className={cn("mr-2 h-4 w-4", internalValue === option.value ? "opacity-100" : "opacity-0")}
                     />
