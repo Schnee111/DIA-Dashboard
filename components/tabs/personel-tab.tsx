@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
@@ -31,13 +31,16 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
   const [itemsPerPage] = useState(10)
 
   // Helper functions for options
-  const getJabatanOptions = (pihak?: "UPI" | "MITRA") =>
-    jabatanData
-      .filter((jabatan) => !pihak || jabatan.pihak === pihak)
-      .map((jabatan) => ({
-        value: jabatan.jabatan_id.toString(),
-        label: `${jabatan.nama_jabatan} (${jabatan.pihak})`,
-      }))
+  const getJabatanOptions = useMemo(
+    () => (pihak?: "UPI" | "MITRA") =>
+      jabatanData
+        .filter((jabatan) => !pihak || jabatan.pihak === pihak)
+        .map((jabatan) => ({
+          value: jabatan.jabatan_id.toString(),
+          label: `${jabatan.nama_jabatan} (${jabatan.pihak})`,
+        })),
+    [jabatanData],
+  )
 
   // Filter data with year range
   const filteredData = personelData.filter((item) => {
@@ -64,53 +67,56 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
   }, [searchTerm, filterPihak, filterYearFrom, filterYearTo])
 
   // Define form fields
-  const personelFields: Field[] = [
-    {
-      name: "nama",
-      label: "Nama Lengkap",
-      type: "text",
-      placeholder: "Masukkan nama lengkap",
-      section: "Informasi Dasar",
-      required: true,
-    },
-    {
-      name: "pihak",
-      label: "Pihak",
-      type: "select",
-      placeholder: "Pilih pihak",
-      section: "Informasi Dasar",
-      options: [
-        { value: "UPI", label: "UPI" },
-        { value: "MITRA", label: "MITRA" },
-      ],
-      required: true,
-    },
-    {
-      name: "email",
-      label: "Email",
-      type: "email",
-      placeholder: "Masukkan email",
-      section: "Informasi Kontak",
-      className: "md:col-span-2",
-    },
-    {
-      name: "kontak",
-      label: "Kontak",
-      type: "text",
-      placeholder: "Masukkan kontak",
-      section: "Informasi Kontak",
-      className: "md:col-span-2",
-    },
-    {
-      name: "jabatan_id",
-      label: "Jabatan",
-      type: "searchable-select",
-      placeholder: "Pilih jabatan",
-      section: "Informasi Jabatan",
-      options: getJabatanOptions(),
-      required: true,
-    },
-  ]
+  const personelFields: Field[] = useMemo(
+    () => [
+      {
+        name: "nama",
+        label: "Nama Lengkap",
+        type: "text",
+        placeholder: "Masukkan nama lengkap",
+        section: "Informasi Dasar",
+        required: true,
+      },
+      {
+        name: "pihak",
+        label: "Pihak",
+        type: "select",
+        placeholder: "Pilih pihak",
+        section: "Informasi Dasar",
+        options: [
+          { value: "UPI", label: "UPI" },
+          { value: "MITRA", label: "MITRA" },
+        ],
+        required: true,
+      },
+      {
+        name: "email",
+        label: "Email",
+        type: "email",
+        placeholder: "Masukkan email",
+        section: "Informasi Kontak",
+        className: "md:col-span-2",
+      },
+      {
+        name: "kontak",
+        label: "Kontak",
+        type: "text",
+        placeholder: "Masukkan kontak",
+        section: "Informasi Kontak",
+        className: "md:col-span-2",
+      },
+      {
+        name: "jabatan_id",
+        label: "Jabatan",
+        type: "searchable-select",
+        placeholder: "Pilih jabatan",
+        section: "Informasi Jabatan",
+        options: getJabatanOptions(),
+        required: true,
+      },
+    ],
+    [getJabatanOptions],
+  )
 
   // Define table columns
   const columns = [
@@ -143,23 +149,7 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
 
   const handleEdit = (item: any) => {
     console.log("🔍 Edit Personel Data:", item) // Debug log
-
-    formHandlers.setSelectedPersonel(item)
-    formHandlers.setNewPersonel({
-      nama: item.nama || "",
-      email: item.email || "",
-      kontak: item.kontak || "",
-      pihak: item.pihak || "UPI",
-      // PENTING: Pastikan ID sebagai string untuk select
-      jabatan_id: item.jabatan_id?.toString() || "",
-    })
-
-    console.log("🔍 Personel Form Values Set:", {
-      jabatan_id: item.jabatan_id?.toString(),
-      pihak: item.pihak,
-    }) // Debug log
-
-    formHandlers.setIsEditPersonelOpen(true)
+    formHandlers.prepareEditPersonel(item, jabatanData)
   }
 
   const handleView = (item: any) => {
@@ -288,13 +278,12 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
         title="Tambah Personel Baru"
         description="Isi form berikut untuk menambahkan personel baru ke dalam sistem"
         fields={personelFields}
-        values={formHandlers.newPersonel}
-        onChange={formHandlers.handleInputChange}
-        onSelectChange={formHandlers.handleSelectChange}
+        editData={{}} // Empty for add mode
         onSubmit={formHandlers.handleAddPersonel}
         open={formHandlers.isAddPersonelOpen}
         onOpenChange={formHandlers.setIsAddPersonelOpen}
         formType="personel"
+        formRef={formHandlers.personelFormRef}
       />
 
       {/* Edit Dialog */}
@@ -302,13 +291,12 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
         title="Edit Personel"
         description="Edit informasi personel dalam sistem"
         fields={personelFields}
-        values={formHandlers.newPersonel}
-        onChange={formHandlers.handleInputChange}
-        onSelectChange={formHandlers.handleSelectChange}
+        editData={formHandlers.editPersonelData} // Pre-filled data for edit mode
         onSubmit={formHandlers.handleEditPersonel}
         open={formHandlers.isEditPersonelOpen}
         onOpenChange={formHandlers.setIsEditPersonelOpen}
         formType="personel"
+        formRef={formHandlers.personelFormRef}
       />
 
       {/* View Dialog */}
