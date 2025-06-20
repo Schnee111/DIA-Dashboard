@@ -54,14 +54,6 @@ export default function CountryDistributionChart({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Statistik Mitra Teratas</CardTitle>
-        <CardDescription>
-          10 Negara dengan jumlah kerjasama terbanyak
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
         <ChartContainer config={chartConfig} className="min-h-[400px] w-full">
           <ResponsiveContainer width="100%" height={400}>
             <BarChart
@@ -110,7 +102,5 @@ export default function CountryDistributionChart({
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
-      </CardContent>
-    </Card>
   )
 }

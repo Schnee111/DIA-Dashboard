@@ -86,6 +86,7 @@ interface DashboardData {
   mitraData: MitraItem[]
   negaraStats: ChartDataItem[]
   jenisStats: ChartDataItem[]
+  partnerStats: ChartDataItem[] // Add this line
   kerjasamaTrend: TrendChartData[]
   statusStats: ChartDataItem[]
   activeCooperationCount: number
@@ -448,7 +449,7 @@ export async function updateKerjasama(id: number, kerjasamaData: Partial<Kerjasa
       link_dokumen: kerjasamaData.link_dokumen || null,
       tgl_input: kerjasamaData.tgl_input || null,
       tgl_lapor: kerjasamaData.tgl_lapor || null,
-      status_lapor: kerjasamaData.status_lapor,
+      status_lapor: kerjasamaData.status,
       tahun: kerjasamaData.tahun,
       pelaksana: kerjasamaData.pelaksana || null,
       mitra_id: kerjasamaData.mitra_id,
@@ -807,9 +808,9 @@ export function filterUsersByYearRange(data: UserItem[], fromYear?: string, toYe
 // ============= CHART DATA PROCESSING =============
 
 /**
- * Process kerjasama data for charts
+ * Process cooperation data for charts
  */
-export function processChartData(kerjasamaData: KerjasamaItem[]): ChartData {
+export function processChartData(kerjasamaData: KerjasamaItem[]): ChartData & { partnerStats: ChartDataItem[] } {
   // Process data for country chart
   const negaraGrouped: Record<string, number> = {}
   kerjasamaData.forEach((item) => {
@@ -844,9 +845,13 @@ export function processChartData(kerjasamaData: KerjasamaItem[]): ChartData {
     value: jenisGrouped[key],
   }))
 
+  // Process data for partner chart
+  const partnerData = processPartnerDistribution(kerjasamaData)
+
   return {
     negaraStats: negaraData,
     jenisStats: jenisData,
+    partnerStats: partnerData,
   }
 }
 
@@ -947,6 +952,30 @@ export function processStatusDistribution(kerjasamaData: KerjasamaItem[]): Chart
 }
 
 /**
+ * Process cooperation data for partner name distribution
+ */
+export function processPartnerDistribution(kerjasamaData: KerjasamaItem[]): ChartDataItem[] {
+  const partnerGrouped: Record<string, number> = {}
+
+  kerjasamaData.forEach((item) => {
+    if (!item.nama_mitra) return
+
+    if (partnerGrouped[item.nama_mitra]) {
+      partnerGrouped[item.nama_mitra]++
+    } else {
+      partnerGrouped[item.nama_mitra] = 1
+    }
+  })
+
+  return Object.keys(partnerGrouped)
+    .map((key) => ({
+      name: key,
+      value: partnerGrouped[key],
+    }))
+    .sort((a, b) => b.value - a.value) // Sort by value descending
+}
+
+/**
  * Process cooperation data by end date to find expiring soon
  */
 export function processExpiringCooperation(kerjasamaData: KerjasamaItem[]): KerjasamaItem[] {
@@ -1010,7 +1039,7 @@ export async function fetchDashboardData(fromYear?: string, toYear?: string): Pr
     }
 
     // Process data for charts
-    const { negaraStats, jenisStats } = processChartData(filteredKerjasama)
+    const { negaraStats, jenisStats, partnerStats } = processChartData(filteredKerjasama)
     const kerjasamaTrend = processKerjasamaTrend(filteredKerjasama)
     const statusStats = processStatusDistribution(filteredKerjasama)
     const activeCooperationCount = countActiveCooperation(filteredKerjasama)
@@ -1020,12 +1049,14 @@ export async function fetchDashboardData(fromYear?: string, toYear?: string): Pr
     // Convert to percentages for pie charts
     const negaraPercentages = calculatePercentages(negaraStats)
     const jenisPercentages = calculatePercentages(jenisStats)
+    const partnerPercentages = calculatePercentages(partnerStats)
 
     return {
       kerjasamaData: filteredKerjasama,
       mitraData: filteredMitra,
       negaraStats: negaraPercentages,
       jenisStats: jenisPercentages,
+      partnerStats: partnerPercentages,
       kerjasamaTrend: kerjasamaTrend,
       statusStats: statusStats,
       activeCooperationCount: activeCooperationCount,

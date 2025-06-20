@@ -95,8 +95,9 @@ export function TrendKerjasamaChart({ data, title, description }: TrendKerjasama
                   key={key}
                   type="monotone"
                   dataKey={key}
-                  stroke={COLORS[index % COLORS.length]}
-                  strokeWidth={2}
+                  // ✅ Total line stands out prominently from background
+                  stroke={key === "Total" ? "#1E40AF" : COLORS[index % COLORS.length]}
+                  strokeWidth={key === "Total" ? 3 : 2}  // Thicker line for Total
                 />
               ))
             ) : (

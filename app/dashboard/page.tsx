@@ -15,6 +15,8 @@ import {
 } from "@/lib/dataService"
 import { useToast } from "@/hooks/use-toast"
 import { TrendKerjasamaChart } from "@/components/dashboard/trend-kerjasama-chart"
+import PartnerDistributionChart from "@/components/dashboard/partner-distribution-chart"
+  
 
 // Define TypeScript interfaces
 interface ChartDataItem { name: string; value: number }
@@ -47,6 +49,8 @@ export default function PublicDashboardPage() {
   const [statusStats, setStatusStats] = useState<ChartDataItem[]>([])
   const [monthlyTrend, setMonthlyTrend] = useState<{ month: string, value: number }[]>([])
   const [kerjasamaTrend, setKerjasamaTrend] = useState<TrendChartData[]>([])
+  const [partnerStats, setPartnerStats] = useState<ChartDataItem[]>([])
+
     useEffect(() => {
     const loadDashboardData = async () => {
       setLoading(true)
@@ -61,6 +65,7 @@ export default function PublicDashboardPage() {
         setNegaraStats(data.negaraStats)
         setJenisStats(data.jenisStats)
         setStatusStats(data.statusStats)
+        setPartnerStats(data.partnerStats)
         setKerjasamaTrend(data.kerjasamaTrend)
 
       } catch (error) {
@@ -231,16 +236,40 @@ export default function PublicDashboardPage() {
               {loading ? <div className="h-64 flex items-center justify-center"><p>Memuat chart...</p></div> : <DocumentTypeChart data={jenisStats} />}
             </CardContent>
           </Card>
-        </div>        <div className="mt-6">
-          <Card>            <CardHeader>
-                <CardTitle>Statistik Mitra</CardTitle>
-                <CardDescription>Distribusi kerjasama berdasarkan negara</CardDescription>
-            </CardHeader>
-            <CardContent className="pl-2">
-                {loading ? <div className="h-64 flex items-center justify-center"><p>Memuat chart...</p></div> : <DistributionChart data={negaraStats} />}
-            </CardContent>
-          </Card>
-        </div>
+        </div>        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribusi Berdasarkan Negara</CardTitle>
+                <CardDescription>10 Negara dengan jumlah kerjasama terbanyak</CardDescription>
+              </CardHeader>
+              <CardContent className="pl-2">
+                {loading ? (
+                  <div className="h-64 flex items-center justify-center">
+                    <p>Memuat chart...</p>
+                  </div>
+                ) : (
+                  <DistributionChart data={negaraStats} />
+                )}
+              </CardContent>
+            </Card>
+  
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribusi Berdasarkan Mitra</CardTitle>
+                <CardDescription>10 Mitra dengan jumlah kerjasama terbanyak</CardDescription>
+              </CardHeader>
+              <CardContent className="pl-2">
+                {loading ? (
+                  <div className="h-64 flex items-center justify-center">
+                    <p>Memuat chart...</p>
+                  </div>
+                ) : (
+                  <PartnerDistributionChart data={partnerStats} />
+                )}
+              </CardContent>
+            </Card>
+          </div>
       </div>
     </DashboardLayout>
   )
