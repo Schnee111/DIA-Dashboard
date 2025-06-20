@@ -25,6 +25,7 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
   const kerjasamaFormRef = useRef<HTMLFormElement | null>(null)
   const personelFormRef = useRef<HTMLFormElement | null>(null)
   const jabatanFormRef = useRef<HTMLFormElement | null>(null)
+  const jenisDokumenFormRef = useRef<HTMLFormElement | null>(null)
 
   // Only keep essential state for form control
   const [selectedMitra, setSelectedMitra] = useState<MitraData | null>(null)
@@ -50,11 +51,22 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
   const [isAddMitraModalOpen, setIsAddMitraModalOpen] = useState(false)
   const [isAddPersonelModalOpen, setIsAddPersonelModalOpen] = useState(false)
   const [isAddJabatanModalOpen, setIsAddJabatanModalOpen] = useState(false)
+  const [isAddJenisDokumenModalOpen, setIsAddJenisDokumenModalOpen] = useState(false)
 
   // Form data states - only for edit mode to populate initial values
   const [editMitraData, setEditMitraData] = useState<Partial<MitraData>>({})
   const [editKerjasamaData, setEditKerjasamaData] = useState<Partial<KerjasamaData>>({})
   const [editPersonelData, setEditPersonelData] = useState<Partial<PersonelData>>({})
+
+  // State for tracking what should be auto-selected after adding
+  const [pendingAutoSelect, setPendingAutoSelect] = useState<{
+    type: "mitra" | "personel" | "jenis_dokumen" | "jabatan"
+    field?: string
+    value?: string | number
+  } | null>(null)
+
+  // State to trigger re-render of searchable selects
+  const [searchableSelectKey, setSearchableSelectKey] = useState(0)
 
   // Get form data from form elements - with proper null checking
   const getFormData = (formRef: React.RefObject<HTMLFormElement | null>) => {
@@ -90,13 +102,67 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     })
   }
 
+  // Auto-select newly added item with improved timing
+  const autoSelectNewItem = (
+    type: "mitra" | "personel" | "jenis_dokumen" | "jabatan",
+    field: string,
+    value: string | number,
+  ) => {
+    // Force re-render of searchable selects to get updated options
+    setSearchableSelectKey((prev) => prev + 1)
+
+    // Multiple attempts with increasing delays to ensure options are loaded
+    const attempts = [500, 1000, 1500]
+    attempts.forEach((delay, index) => {
+      setTimeout(() => {
+        // Try to find and update the SearchableSelect component
+        const container = document.querySelector(`[data-field="${field}"]`)
+        if (container) {
+          const event = new CustomEvent("autoSelect", {
+            detail: { value: value.toString() },
+          })
+          container.dispatchEvent(event)
+        }
+
+        // Also try the hidden input approach
+        const formRefs = [kerjasamaFormRef, personelFormRef]
+        formRefs.forEach((formRef) => {
+          if (formRef.current) {
+            const hiddenInput = formRef.current.querySelector(`input[name="${field}"]`) as HTMLInputElement
+            if (hiddenInput) {
+              hiddenInput.value = value.toString()
+              hiddenInput.dispatchEvent(new Event("change", { bubbles: true }))
+            }
+          }
+        })
+
+        // Log for debugging
+        console.log(`Auto-select attempt ${index + 1} for ${field} with value ${value}`)
+      }, delay)
+    })
+  }
+
   const handleAddMitra = async () => {
     try {
       const formData = getFormData(mitraFormRef)
       const createdMitra = await createMitra(formData)
-      if (refreshData) refreshData()
+
+      // Refresh data first
+      if (refreshData) {
+        await refreshData()
+      }
+
       setIsAddMitraOpen(false)
       mitraFormRef.current?.reset()
+
+      // Auto-select the newly created mitra if we're in kerjasama context
+      if (pendingAutoSelect?.type === "mitra") {
+        setTimeout(() => {
+          autoSelectNewItem("mitra", "mitra_id", createdMitra.mitra_id)
+          setPendingAutoSelect(null)
+        }, 1000) // Increased delay to ensure data is refreshed
+      }
+
       toast({
         title: "✅ Berhasil Ditambahkan",
         description: `Mitra "${createdMitra.nama_mitra}" berhasil ditambahkan ke sistem`,
@@ -166,6 +232,7 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
       if (refreshData) refreshData()
       setIsAddKerjasamaOpen(false)
       kerjasamaFormRef.current?.reset()
+      setSearchableSelectKey((prev) => prev + 1) // Reset searchable selects
       toast({
         title: "✅ Berhasil Ditambahkan",
         description: `Kerjasama "${createdKerjasama.judul_kerjasama}" berhasil ditambahkan ke sistem`,
@@ -231,9 +298,24 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     try {
       const formData = getFormData(personelFormRef)
       const createdPersonel = await createPersonel(formData)
-      if (refreshData) refreshData()
+
+      // Refresh data first
+      if (refreshData) {
+        await refreshData()
+      }
+
       setIsAddPersonelOpen(false)
       personelFormRef.current?.reset()
+      setSearchableSelectKey((prev) => prev + 1) // Reset searchable selects
+
+      // Auto-select the newly created personel if we're in kerjasama context
+      if (pendingAutoSelect?.type === "personel" && pendingAutoSelect.field) {
+        setTimeout(() => {
+          autoSelectNewItem("personel", pendingAutoSelect.field!, createdPersonel.personel_id)
+          setPendingAutoSelect(null)
+        }, 1000)
+      }
+
       toast({
         title: "✅ Berhasil Ditambahkan",
         description: `Personel "${createdPersonel.nama}" berhasil ditambahkan ke sistem`,
@@ -297,10 +379,24 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
   const handleAddJabatan = async () => {
     try {
       const formData = getFormData(jabatanFormRef)
-      await createJabatan(formData)
-      if (refreshData) refreshData()
+      const createdJabatan = await createJabatan(formData)
+
+      // Refresh data first
+      if (refreshData) {
+        await refreshData()
+      }
+
       setIsAddJabatanModalOpen(false)
       jabatanFormRef.current?.reset()
+
+      // Auto-select the newly created jabatan if we're in personel context
+      if (pendingAutoSelect?.type === "jabatan") {
+        setTimeout(() => {
+          autoSelectNewItem("jabatan", "jabatan_id", createdJabatan.jabatan_id)
+          setPendingAutoSelect(null)
+        }, 1000)
+      }
+
       toast({
         title: "✅ Berhasil Ditambahkan",
         description: `Jabatan "${formData.nama_jabatan}" berhasil ditambahkan`,
@@ -312,6 +408,7 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
         description: error.message || "Terjadi kesalahan saat menambahkan jabatan.",
         variant: "destructive",
       })
+      throw error
     }
   }
 
@@ -333,13 +430,30 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     }
   }
 
-  const handleAddJenisDokumen = async (nama_jenis: string) => {
+  const handleAddJenisDokumen = async () => {
     try {
-      await createJenisDokumen({ nama_jenis })
-      if (refreshData) refreshData()
+      const formData = getFormData(jenisDokumenFormRef)
+      const createdJenisDokumen = await createJenisDokumen({
+        nama_jenis: formData.nama_jenis,
+        deskripsi: formData.deskripsi,
+      })
+
+      // Refresh data first
+      if (refreshData) {
+        await refreshData()
+      }
+
+      setIsAddJenisDokumenModalOpen(false)
+      jenisDokumenFormRef.current?.reset()
+
+      // Auto-select the newly created jenis dokumen
+      setTimeout(() => {
+        autoSelectNewItem("jenis_dokumen", "jenis_dok_id", createdJenisDokumen.jenis_dok_id)
+      }, 1000)
+
       toast({
         title: "✅ Berhasil Ditambahkan",
-        description: `Jenis dokumen "${nama_jenis}" berhasil ditambahkan`,
+        description: `Jenis dokumen "${formData.nama_jenis}" berhasil ditambahkan`,
         variant: "default",
       })
     } catch (error: any) {
@@ -348,6 +462,7 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
         description: error.message || "Terjadi kesalahan saat menambahkan jenis dokumen.",
         variant: "destructive",
       })
+      throw error
     }
   }
 
@@ -444,12 +559,35 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     setTimeout(() => setFormValues(personelFormRef, formData), 100)
   }
 
+  // Functions to handle adding from kerjasama form
+  const handleAddMitraFromKerjasama = () => {
+    setPendingAutoSelect({ type: "mitra" })
+    setIsAddMitraOpen(true)
+  }
+
+  const handleAddPersonelFromKerjasama = (field: string) => {
+    setPendingAutoSelect({ type: "personel", field })
+    setIsAddPersonelOpen(true)
+  }
+
+  const handleAddJenisDokumenFromKerjasama = () => {
+    setPendingAutoSelect({ type: "jenis_dokumen" })
+    setIsAddJenisDokumenModalOpen(true)
+  }
+
+  // Function to handle adding jabatan from personel form
+  const handleAddJabatanFromPersonel = () => {
+    setPendingAutoSelect({ type: "jabatan" })
+    setIsAddJabatanModalOpen(true)
+  }
+
   return {
     // Form refs
     mitraFormRef,
     kerjasamaFormRef,
     personelFormRef,
     jabatanFormRef,
+    jenisDokumenFormRef,
 
     // Edit data for initial values
     editMitraData,
@@ -477,6 +615,7 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     isAddMitraModalOpen,
     isAddPersonelModalOpen,
     isAddJabatanModalOpen,
+    isAddJenisDokumenModalOpen,
 
     // Setters
     setSelectedMitra,
@@ -497,6 +636,7 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     setIsAddMitraModalOpen,
     setIsAddPersonelModalOpen,
     setIsAddJabatanModalOpen,
+    setIsAddJenisDokumenModalOpen,
 
     // Handlers
     handleAddMitra,
@@ -516,5 +656,16 @@ export function useFormHandlers(toast: (options: any) => void, refreshData?: () 
     prepareEditMitra,
     prepareEditKerjasama,
     prepareEditPersonel,
+
+    // New functions for adding from kerjasama form
+    handleAddMitraFromKerjasama,
+    handleAddPersonelFromKerjasama,
+    handleAddJenisDokumenFromKerjasama,
+
+    // New function for adding jabatan from personel form
+    handleAddJabatanFromPersonel,
+
+    // Additional state
+    searchableSelectKey,
   }
 }

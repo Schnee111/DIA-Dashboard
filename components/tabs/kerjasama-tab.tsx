@@ -24,7 +24,17 @@ interface KerjasamaTabProps {
 }
 
 export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filterYearTo, toast }: KerjasamaTabProps) {
-  const { kerjasamaData, mitraData, jenisDokumenData, personelData, loading, refreshData } = useDataFetch()
+  const {
+    kerjasamaData,
+    mitraData,
+    jenisDokumenData,
+    personelData,
+    jabatanData,
+    negaraData,
+    jenisPartnerData,
+    loading,
+    refreshData,
+  } = useDataFetch()
   const formHandlers = useFormHandlers(toast, refreshData)
 
   const [filterStatus, setFilterStatus] = useState("all")
@@ -293,6 +303,154 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
       },
     ],
     [optionsData],
+  )
+
+  const jabatanFields: Field[] = useMemo(
+    () => [
+      {
+        name: "nama_jabatan",
+        label: "Nama Jabatan",
+        type: "text",
+        placeholder: "Masukkan nama jabatan",
+        section: "Informasi Jabatan",
+        required: true,
+      },
+      {
+        name: "pihak",
+        label: "Pihak",
+        type: "select",
+        placeholder: "Pilih pihak",
+        section: "Informasi Jabatan",
+        options: [
+          { value: "UPI", label: "UPI" },
+          { value: "MITRA", label: "MITRA" },
+        ],
+        required: true,
+      },
+    ],
+    [],
+  )
+
+  // Memoize mitra fields for the add mitra modal
+  const mitraFields: Field[] = useMemo(
+    () => [
+      {
+        name: "nama_mitra",
+        label: "Nama Mitra",
+        type: "text",
+        placeholder: "Masukkan nama mitra",
+        section: "Informasi Mitra",
+        required: true,
+        className: "md:col-span-2",
+      },
+      {
+        name: "alamat",
+        label: "Alamat",
+        type: "textarea",
+        placeholder: "Masukkan alamat mitra",
+        section: "Informasi Mitra",
+        className: "md:col-span-2",
+      },
+      {
+        name: "negara_id",
+        label: "Negara",
+        type: "searchable-select",
+        placeholder: "Pilih negara",
+        section: "Informasi Mitra",
+        options: negaraData.map((negara) => ({
+          value: negara.negara_id.toString(),
+          label: negara.nama_negara,
+        })),
+        required: true,
+      },
+      {
+        name: "jenis_partner_id",
+        label: "Jenis Partner",
+        type: "searchable-select",
+        placeholder: "Pilih jenis partner",
+        section: "Informasi Mitra",
+        options: jenisPartnerData.map((jenis) => ({
+          value: jenis.jenis_partner_id.toString(),
+          label: jenis.nama_jenis,
+        })),
+        required: true,
+      },
+    ],
+    [negaraData, jenisPartnerData],
+  )
+
+  // Memoize personel fields for the add personel modal
+  const personelFields: Field[] = useMemo(
+    () => [
+      {
+        name: "nama",
+        label: "Nama Personel",
+        type: "text",
+        placeholder: "Masukkan nama personel",
+        section: "Informasi Personel",
+        required: true,
+      },
+      {
+        name: "email",
+        label: "Email",
+        type: "email",
+        placeholder: "Masukkan email personel",
+        section: "Informasi Personel",
+      },
+      {
+        name: "kontak",
+        label: "Kontak",
+        type: "text",
+        placeholder: "Masukkan nomor kontak",
+        section: "Informasi Personel",
+      },
+      {
+        name: "pihak",
+        label: "Pihak",
+        type: "select",
+        placeholder: "Pilih pihak",
+        section: "Informasi Personel",
+        options: [
+          { value: "UPI", label: "UPI" },
+          { value: "MITRA", label: "MITRA" },
+        ],
+        required: true,
+      },
+      {
+        name: "jabatan_id",
+        label: "Jabatan",
+        type: "searchable-select",
+        placeholder: "Pilih jabatan",
+        section: "Informasi Personel",
+        options: jabatanData.map((jabatan) => ({
+          value: jabatan.jabatan_id.toString(),
+          label: jabatan.nama_jabatan,
+        })),
+      },
+    ],
+    [jabatanData],
+  )
+
+  // Memoize jenis dokumen fields for the add jenis dokumen modal
+  const jenisDokumenFields: Field[] = useMemo(
+    () => [
+      {
+        name: "nama_jenis",
+        label: "Nama Jenis Dokumen",
+        type: "text",
+        placeholder: "Masukkan nama jenis dokumen",
+        section: "Informasi Jenis Dokumen",
+        required: true,
+      },
+      {
+        name: "deskripsi",
+        label: "Deskripsi",
+        type: "textarea",
+        placeholder: "Masukkan deskripsi jenis dokumen (opsional)",
+        section: "Informasi Jenis Dokumen",
+      },
+    ],
+    [],
   )
 
   // Memoize table columns
@@ -578,6 +736,9 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
         onOpenChange={formHandlers.setIsAddKerjasamaOpen}
         formType="kerjasama"
         formRef={formHandlers.kerjasamaFormRef}
+        onAddMitra={formHandlers.handleAddMitraFromKerjasama}
+        onAddPersonel={() => formHandlers.handleAddPersonelFromKerjasama("pj_upi")}
+        onAddJenisDokumen={formHandlers.handleAddJenisDokumenFromKerjasama}
       />
 
       {/* Edit Dialog */}
@@ -591,6 +752,59 @@ export function KerjasamaTab({ searchTerm, setSearchTerm, filterYearFrom, filter
         onOpenChange={formHandlers.setIsEditKerjasamaOpen}
         formType="kerjasama"
         formRef={formHandlers.kerjasamaFormRef}
+        onAddMitra={formHandlers.handleAddMitraFromKerjasama}
+        onAddPersonel={() => formHandlers.handleAddPersonelFromKerjasama("pj_upi")}
+        onAddJenisDokumen={formHandlers.handleAddJenisDokumenFromKerjasama}
+      />
+
+      {/* Add Mitra Dialog */}
+      <AddEditDialog
+        title="Tambah Mitra Baru"
+        description="Isi form berikut untuk menambahkan mitra baru"
+        fields={mitraFields}
+        onSubmit={formHandlers.handleAddMitra}
+        open={formHandlers.isAddMitraOpen}
+        onOpenChange={formHandlers.setIsAddMitraOpen}
+        formType="mitra"
+        formRef={formHandlers.mitraFormRef}
+      />
+
+      {/* Add Personel Dialog */}
+      <AddEditDialog
+        title="Tambah Personel Baru"
+        description="Isi form berikut untuk menambahkan personel baru"
+        fields={personelFields}
+        onSubmit={formHandlers.handleAddPersonel}
+        open={formHandlers.isAddPersonelOpen}
+        onOpenChange={formHandlers.setIsAddPersonelOpen}
+        formType="personel"
+        formRef={formHandlers.personelFormRef}
+        onAddJabatan={formHandlers.handleAddJabatanFromPersonel}
+      />
+
+      {/* Add Jenis Dokumen Dialog */}
+      <AddEditDialog
+        title="Tambah Jenis Dokumen Baru"
+        description="Isi form berikut untuk menambahkan jenis dokumen baru"
+        fields={jenisDokumenFields}
+        onSubmit={formHandlers.handleAddJenisDokumen}
+        open={formHandlers.isAddJenisDokumenModalOpen}
+        onOpenChange={formHandlers.setIsAddJenisDokumenModalOpen}
+        formType="jabatan"
+        formRef={formHandlers.jenisDokumenFormRef}
+      />
+
+      {/* Add Jabatan Dialog */}
+      <AddEditDialog
+        title="Tambah Jabatan Baru"
+        description="Isi form berikut untuk menambahkan jabatan baru"
+        fields={jabatanFields}
+        editData={{}}
+        onSubmit={formHandlers.handleAddJabatan}
+        open={formHandlers.isAddJabatanModalOpen}
+        onOpenChange={formHandlers.setIsAddJabatanModalOpen}
+        formType="jabatan"
+        formRef={formHandlers.jabatanFormRef}
       />
 
       {/* View Dialog */}

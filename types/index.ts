@@ -79,6 +79,7 @@ export interface JenisPartnerData {
 export interface JenisDokumenData {
   jenis_dok_id: number
   nama_jenis: string
+  deskripsi?: string
 }
 
 export type Field = {

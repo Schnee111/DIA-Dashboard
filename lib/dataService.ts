@@ -672,11 +672,19 @@ export async function createNegara(negaraData: { nama_negara: string }): Promise
   }
 }
 
-export async function createJenisDokumen(jenisDokumenData: { nama_jenis: string }): Promise<JenisDokumenItem> {
+export async function createJenisDokumen(jenisDokumenData: {
+  nama_jenis: string
+  deskripsi?: string
+}): Promise<JenisDokumenItem> {
   try {
     const { data, error } = await supabase
       .from("jenis_dokumen")
-      .insert([{ nama_jenis: jenisDokumenData.nama_jenis }])
+      .insert([
+        {
+          nama_jenis: jenisDokumenData.nama_jenis,
+          deskripsi: jenisDokumenData.deskripsi || null,
+        },
+      ])
       .select()
       .single()
 

@@ -5,10 +5,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle, Loader2, Plus } from "lucide-react"
 import type { Field } from "@/types"
 import { Button } from "../ui/button"
-import { useState, useEffect } from "react"
+import { SearchableSelect } from "./searchable-select"
+import { useState, useEffect, useCallback } from "react"
 
 interface AddEditDialogProps {
   title: string
@@ -20,6 +21,11 @@ interface AddEditDialogProps {
   onOpenChange: (open: boolean) => void
   formType?: "mitra" | "kerjasama" | "personel" | "jabatan"
   formRef: React.RefObject<HTMLFormElement | null>
+  // Add new props for handling related data additions
+  onAddMitra?: () => void
+  onAddPersonel?: () => void
+  onAddJenisDokumen?: () => void
+  onAddJabatan?: () => void
 }
 
 export function AddEditDialog({
@@ -32,10 +38,15 @@ export function AddEditDialog({
   onOpenChange,
   formType = "mitra",
   formRef,
+  onAddMitra,
+  onAddPersonel,
+  onAddJenisDokumen,
+  onAddJabatan,
 }: AddEditDialogProps) {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [searchableSelectValues, setSearchableSelectValues] = useState<{ [key: string]: string }>({})
 
   // Reset states when dialog opens/closes
   useEffect(() => {
@@ -45,14 +56,36 @@ export function AddEditDialog({
     } else {
       // Reset form when closing
       formRef.current?.reset()
+      setSearchableSelectValues({})
     }
   }, [open, formRef])
+
+  // Initialize searchable select values from editData - separate useEffect
+  useEffect(() => {
+    if (open && Object.keys(editData).length > 0) {
+      const initialValues: { [key: string]: string } = {}
+      fields.forEach((field) => {
+        if (field.type === "searchable-select" && editData[field.name]) {
+          initialValues[field.name] = editData[field.name].toString()
+        }
+      })
+
+      // Only update if values are different to prevent infinite loop
+      setSearchableSelectValues((prev) => {
+        const hasChanges =
+          Object.keys(initialValues).some((key) => prev[key] !== initialValues[key]) ||
+          Object.keys(prev).length !== Object.keys(initialValues).length
+
+        return hasChanges ? initialValues : prev
+      })
+    }
+  }, [open, JSON.stringify(editData)]) // Use JSON.stringify for stable comparison
 
   // Set default values for edit mode
   useEffect(() => {
     if (open && Object.keys(editData).length > 0 && formRef.current) {
       // Small delay to ensure form is rendered
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         Object.entries(editData).forEach(([key, value]) => {
           const input = formRef.current?.querySelector(`[name="${key}"]`) as
             | HTMLInputElement
@@ -68,10 +101,12 @@ export function AddEditDialog({
           }
         })
       }, 100)
-    }
-  }, [open, editData, formRef])
 
-  const validateAndSubmit = async () => {
+      return () => clearTimeout(timeoutId)
+    }
+  }, [open, JSON.stringify(editData), formRef])
+
+  const validateAndSubmit = useCallback(async () => {
     if (!formRef.current) return
 
     // Get form data
@@ -81,6 +116,13 @@ export function AddEditDialog({
     for (const [key, value] of formData.entries()) {
       data[key] = value
     }
+
+    // Add searchable select values
+    Object.entries(searchableSelectValues).forEach(([key, value]) => {
+      if (value) {
+        data[key] = value
+      }
+    })
 
     // Check required fields
     const missingFields = fields
@@ -119,91 +161,175 @@ export function AddEditDialog({
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [formRef, searchableSelectValues, fields, onSubmit, onOpenChange])
 
-  const renderField = (field: Field) => {
-    const { name, label, type, placeholder, options, className } = field
-    const defaultValue = editData[name] || ""
+  const renderAddButton = useCallback(
+    (fieldName: string) => {
+      if (fieldName === "mitra_id" && onAddMitra) {
+        return (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddMitra}
+            className="ml-2 px-2 py-1 h-8"
+            title="Tambah Mitra Baru"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )
+      }
 
-    switch (type) {
-      case "text":
-      case "email":
-      case "number":
+      if (
+        (fieldName === "pj_upi" ||
+          fieldName === "pj_mitra" ||
+          fieldName === "penandatangan_upi" ||
+          fieldName === "penandatangan_mitra") &&
+        onAddPersonel
+      ) {
         return (
-          <div key={name} className={className}>
-            <label className="block text-sm font-medium mb-1">
-              {label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <Input name={name} defaultValue={defaultValue} placeholder={placeholder} type={type} />
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddPersonel}
+            className="ml-2 px-2 py-1 h-8"
+            title="Tambah Personel Baru"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         )
-      case "textarea":
+      }
+
+      if (fieldName === "jenis_dok_id" && onAddJenisDokumen) {
         return (
-          <div key={name} className={className}>
-            <label className="block text-sm font-medium mb-1">
-              {label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <Textarea name={name} defaultValue={defaultValue} placeholder={placeholder} />
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddJenisDokumen}
+            className="ml-2 px-2 py-1 h-8"
+            title="Tambah Jenis Dokumen Baru"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         )
-      case "select":
+      }
+
+      if (fieldName === "jabatan_id" && onAddJabatan) {
         return (
-          <div key={name} className={className}>
-            <label className="block text-sm font-medium mb-1">
-              {label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <select
-              name={name}
-              defaultValue={defaultValue}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">{placeholder}</option>
-              {options?.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddJabatan}
+            className="ml-2 px-2 py-1 h-8"
+            title="Tambah Jabatan Baru"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         )
-      case "searchable-select":
-        return (
-          <div key={name} className={className}>
-            <label className="block text-sm font-medium mb-1">
-              {label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <select
-              name={name}
-              defaultValue={defaultValue}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">{placeholder}</option>
-              {options?.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
-      case "date":
-        return (
-          <div key={name} className={className}>
-            <label className="block text-sm font-medium mb-1">
-              {label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <Input name={name} defaultValue={defaultValue} type="date" />
-          </div>
-        )
-      default:
-        return null
-    }
-  }
+      }
+
+      return null
+    },
+    [onAddMitra, onAddPersonel, onAddJenisDokumen, onAddJabatan],
+  )
+
+  const handleSearchableSelectChange = useCallback((fieldName: string, value: string) => {
+    setSearchableSelectValues((prev) => ({
+      ...prev,
+      [fieldName]: value,
+    }))
+  }, [])
+
+  const renderField = useCallback(
+    (field: Field) => {
+      const { name, label, type, placeholder, options, className } = field
+      const defaultValue = editData[name] || ""
+
+      switch (type) {
+        case "text":
+        case "email":
+        case "number":
+          return (
+            <div key={name} className={className}>
+              <label className="block text-sm font-medium mb-1">
+                {label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <Input name={name} defaultValue={defaultValue} placeholder={placeholder} type={type} />
+            </div>
+          )
+        case "textarea":
+          return (
+            <div key={name} className={className}>
+              <label className="block text-sm font-medium mb-1">
+                {label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <Textarea name={name} defaultValue={defaultValue} placeholder={placeholder} />
+            </div>
+          )
+        case "select":
+          return (
+            <div key={name} className={className}>
+              <label className="block text-sm font-medium mb-1">
+                {label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <select
+                name={name}
+                defaultValue={defaultValue}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">{placeholder}</option>
+                {options?.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        case "searchable-select":
+          return (
+            <div key={name} className={className}>
+              <label className="block text-sm font-medium mb-1">
+                {label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <div className="flex items-center">
+                <div className="flex-1" data-field={name}>
+                  <SearchableSelect
+                    options={options || []}
+                    value={searchableSelectValues[name] || defaultValue}
+                    onValueChange={(value) => handleSearchableSelectChange(name, value)}
+                    placeholder={placeholder}
+                  />
+                  {/* Hidden input for form submission */}
+                  <input type="hidden" name={name} value={searchableSelectValues[name] || defaultValue} />
+                </div>
+                {renderAddButton(name)}
+              </div>
+            </div>
+          )
+        case "date":
+          return (
+            <div key={name} className={className}>
+              <label className="block text-sm font-medium mb-1">
+                {label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <Input name={name} defaultValue={defaultValue} type="date" />
+            </div>
+          )
+        default:
+          return null
+      }
+    },
+    [editData, searchableSelectValues, handleSearchableSelectChange, renderAddButton],
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

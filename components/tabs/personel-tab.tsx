@@ -118,6 +118,33 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
     [getJabatanOptions],
   )
 
+  // Define jabatan fields for inline add
+  const jabatanFields: Field[] = useMemo(
+    () => [
+      {
+        name: "nama_jabatan",
+        label: "Nama Jabatan",
+        type: "text",
+        placeholder: "Masukkan nama jabatan",
+        section: "Informasi Jabatan",
+        required: true,
+      },
+      {
+        name: "pihak",
+        label: "Pihak",
+        type: "select",
+        placeholder: "Pilih pihak",
+        section: "Informasi Jabatan",
+        options: [
+          { value: "UPI", label: "UPI" },
+          { value: "MITRA", label: "MITRA" },
+        ],
+        required: true,
+      },
+    ],
+    [],
+  )
+
   // Define table columns
   const columns = [
     { key: "nama", label: "Nama", sortable: true },
@@ -284,6 +311,7 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
         onOpenChange={formHandlers.setIsAddPersonelOpen}
         formType="personel"
         formRef={formHandlers.personelFormRef}
+        onAddJabatan={formHandlers.handleAddJabatanFromPersonel}
       />
 
       {/* Edit Dialog */}
@@ -297,6 +325,20 @@ export function PersonelTab({ searchTerm, setSearchTerm, filterYearFrom, filterY
         onOpenChange={formHandlers.setIsEditPersonelOpen}
         formType="personel"
         formRef={formHandlers.personelFormRef}
+        onAddJabatan={formHandlers.handleAddJabatanFromPersonel}
+      />
+
+      {/* Add Jabatan Dialog */}
+      <AddEditDialog
+        title="Tambah Jabatan Baru"
+        description="Isi form berikut untuk menambahkan jabatan baru"
+        fields={jabatanFields}
+        editData={{}}
+        onSubmit={formHandlers.handleAddJabatan}
+        open={formHandlers.isAddJabatanModalOpen}
+        onOpenChange={formHandlers.setIsAddJabatanModalOpen}
+        formType="jabatan"
+        formRef={formHandlers.jabatanFormRef}
       />
 
       {/* View Dialog */}
